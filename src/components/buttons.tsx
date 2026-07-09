@@ -1,13 +1,21 @@
 "use client";
 
 import { motion } from "motion/react";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { HTMLMotionProps } from "motion/react";
+import type { ReactNode } from "react";
 import { snappy } from "@/lib/motion";
 
 /** Shared tactile press feedback for every tappable control (motion-guide.md). */
 const tap = { whileTap: { scale: 0.94 }, transition: snappy };
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+// HTMLMotionProps (not React's own ButtonHTMLAttributes) — motion.button
+// redefines onAnimationStart/onDrag/onDragStart/onDragEnd with its own
+// animation-oriented signatures, incompatible with the native DOM event
+// handler types; spreading native-typed props onto motion.button is a type
+// error, not just a lint nit (surfaces in `next build`'s tsc pass even
+// though `next dev`/Turbopack never runs it, which is why this stayed
+// unnoticed until deploying to Vercel).
+type ButtonProps = HTMLMotionProps<"button"> & {
   children: ReactNode;
 };
 
@@ -97,7 +105,7 @@ export function IconButton({
   className = "",
   variant = "secondary",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & {
+}: HTMLMotionProps<"button"> & {
   children: ReactNode;
   variant?: "secondary" | "tertiary";
 }) {
