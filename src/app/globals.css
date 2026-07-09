@@ -1,0 +1,180 @@
+@import "tailwindcss";
+
+/* Design tokens — sourced from design.md (Figma "Yummy__Knowie---Evelyn").
+   Dark mode only; there is no light variant. Do not add hex values outside
+   this file — extend here first if design.md gets a new token. */
+@theme {
+  /* Backgrounds & surfaces */
+  --color-background-page: #090c18;
+  --color-background-surface: #22242f;
+  --color-background-inverse: #f4f2ff;
+  --color-background-stacking: #ffffff1a;
+  --color-background-scrim: #0a0a0a80;
+
+  /* Text */
+  --color-text-primary: #f4f2ff;
+  --color-text-secondary: #f5f3ffad;
+  --color-text-disabled: #ffffff66;
+
+  /* Borders */
+  --color-border-subtle: #ffffff1a;
+  --color-border-default: #ffffff1a;
+
+  /* Brand accent (primary purple) */
+  --color-brand-bold: #9178e6;
+  --color-brand-subtle: #15103a;
+  --color-brand-on-subtle: #7b65e0;
+  --color-brand-on-bold: #0e0a18;
+
+  /* Multi-hue accents */
+  --color-blue-bold: #5fa0fc;
+  --color-blue-on-bold: #06173b;
+  --color-blue-subtle: #0a1635;
+  --color-blue-on-subtle: #7ba8f2;
+
+  --color-green-bold: #00c386;
+  --color-green-on-bold: #0a1f18;
+
+  --color-coral-bold: #fb7e5b;
+  --color-coral-on-bold: #2e0f06;
+  --color-coral-subtle: #512e2c;
+  --color-coral-on-subtle: #ffb59b;
+
+  --color-magenta-bold: #e879c0;
+  --color-magenta-on-bold: #2c0a20;
+  --color-magenta-subtle: #380d29;
+
+  --color-pro-bold: #f5b53d;
+  --color-pro-on-bold: #2a1d04;
+  --color-pro-subtle: #3a2d0b;
+
+  /* Feedback (system messaging) */
+  --color-feedback-success-subtle: #0a2e22;
+  --color-feedback-success-on-subtle: #4ae5b0;
+  --color-feedback-warning: #ffd13e;
+
+  /* Interactive (buttons) */
+  --color-interactive-primary: #f4f2ff;
+  --color-interactive-on-primary: #090c18;
+  --color-interactive-secondary: #ffffff1a;
+  --color-interactive-on-secondary: #f4f2ff;
+  --color-interactive-disabled: #ffffff1a;
+  --color-interactive-destructive: #ff6b6b;
+
+  /* Mascot */
+  --color-mascot-primary: #9178e6;
+  --color-mascot-eyes: #ffffff;
+
+  /* Radius — radius-full/pill already covered by Tailwind's rounded-full.
+     space/* tokens map 1:1 to Tailwind's default 4px spacing scale
+     (space/200=8 -> gap-2, space/300=12 -> gap-3, space/600=24 -> p-6),
+     so no custom spacing scale is needed for those. These two radii
+     showed up repeatedly in design.md with no named token: */
+  --radius-card: 24px;
+  --radius-sheet: 32px;
+  --radius-bubble: 16px;
+
+  /* space/700 is 29px in every bottomCta measured off Figma's dev-mode
+     export (not 28 — it doesn't fall on the default 4px-multiple scale,
+     hence a real named token here rather than Tailwind's built-in p-7).
+     Generates p-700/px-700/py-700/gap-700/etc. */
+  --spacing-700: 29px;
+
+  /* Fonts */
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-bricolage);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-background-page);
+  color: var(--color-text-primary);
+}
+
+/* Mascot idle motion (entry/primer screen) — CSS-driven, not JS, for
+   performance. Two nested elements each own a single transform axis
+   (vertical bob vs. rotation drift) so they compose instead of fighting
+   over the `transform` property; the glow is a third, separately-timed
+   element synced to the bob so weight reads correctly. Quiet "idle/alive"
+   motion, not a bounce. */
+@keyframes mascot-bob {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes mascot-drift {
+  0% {
+    transform: rotate(-1.5deg);
+  }
+  100% {
+    transform: rotate(1.5deg);
+  }
+}
+
+@keyframes mascot-glow {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.82);
+    opacity: 0.55;
+  }
+}
+
+.mascot-bob {
+  animation: mascot-bob 3s ease-in-out infinite alternate;
+}
+
+.mascot-drift {
+  animation: mascot-drift 3.4s ease-in-out infinite alternate;
+}
+
+.mascot-glow {
+  animation: mascot-glow 3s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot-bob,
+  .mascot-drift,
+  .mascot-glow {
+    animation: none;
+  }
+}
+
+/* Hides the native scrollbar on the text-fallback answer box (TextInput) —
+   Figma's overflow state (13965:32460) draws its own 8px rounded thumb
+   instead, so the browser's default must never show through. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Desktop-only phone-mockup backdrop gradient (app/layout.tsx) — a plain
+   CSS rule rather than a Tailwind arbitrary-value class: Tailwind's
+   bracket parser doesn't reliably handle the commas inside
+   radial-gradient()'s argument list, so `bg-[radial-gradient(...)]`
+   silently failed to generate any CSS at all (confirmed via
+   getComputedStyle — the class was present in the DOM but produced no
+   background-image rule). Gated behind the same >=500px breakpoint as
+   the rest of the frame decoration; never applies on a real device. */
+@media (min-width: 500px) {
+  .desktop-frame-backdrop {
+    background: radial-gradient(
+      ellipse at center,
+      var(--color-brand-subtle) 0%,
+      var(--color-background-page) 70%
+    );
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

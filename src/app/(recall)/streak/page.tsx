@@ -1,0 +1,158 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { motion } from "motion/react";
+import { PrimaryButton } from "@/components/buttons";
+import { BottomCta } from "@/components/bottom-cta";
+import { CountUpNumber } from "@/components/count-up-number";
+import { ConfettiBurst } from "@/components/confetti-burst";
+import {
+  useMascotBubble,
+  useRecallStep,
+  useTermOutcomes,
+} from "@/lib/recall-flow-context";
+import { gentle, snappy } from "@/lib/motion";
+
+/**
+ * Streak reveal (Figma nodes 13900:26427 "completed" path / 13900:26466
+ * "Maybe later" path — pixel-identical frames, same component either
+ * way). design.md's "Full-bleed celebration takeover": the one screen in
+ * this flow that goes solid coral instead of the standard dark chrome.
+ *
+ * Mocked streak data (3-day streak, Mo/Tu/We filled) is the same fixed
+ * example Figma shows — this app doesn't track a real streak, consistent
+ * with "mock the recall intelligence" for every other scripted value.
+ *
+ * Continue branches on whether the recall step was ever engaged this
+ * session at all — real attempt (voice or text) submitted, or a term
+ * explicitly skipped — via `termOutcomes` being non-empty (populated by
+ * either an outcome confirmed via Continue, an explicit skip, or a term's
+ * exit-button backfill; see recall-flow-context.tsx). Never engaged (Path
+ * A "Maybe later", or X with zero interaction) skips straight to the
+ * simplified `/summary`; any real engagement detours through the per-term
+ * `/recall-summary` first. `/summary` itself re-derives which variant
+ * it's showing from the same session context, so this page doesn't need
+ * to pass a query param through.
+ */
+const DAY_LABELS = ["Mo", "Tu", "We", "Th", "Fr"];
+const FILLED_DAYS = 3;
+
+const dayVariants = {
+  hidden: { opacity: 0, scale: 0.6 },
+  visible: { opacity: 1, scale: 1 },
+};
+
+export default function StreakPage() {
+  const router = useRouter();
+  const termOutcomes = useTermOutcomes();
+  const [revealed, setRevealed] = useState(false);
+
+  const onExit = useCallback(() => router.back(), [router]);
+  useRecallStep({ currentStep: null, totalSteps: 6, onExit });
+  // Bespoke full-bleed screen, not the shared small mascot+bubble block.
+  useMascotBubble(null);
+
+  useEffect(() => {
+    const id = setTimeout(() => setRevealed(true), 450);
+    return () => clearTimeout(id);
+  }, []);
+
+  function handleContinue() {
+    const recallEngaged = Object.keys(termOutcomes).length > 0;
+    router.push(recallEngaged ? "/recall-summary" : "/summary");
+  }
+
+  return (
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-coral-bold">
+      <ConfettiBurst play={revealed} />
+
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-7 overflow-y-auto px-5 py-10">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={gentle}
+          className="flex flex-col items-center gap-4"
+        >
+          {/* Flame streak icon (public/images/streak.svg, natively
+              142x178 — matches Figma's slot 13900:26440, 141x177). */}
+          <img
+            src="/images/streak.svg"
+            alt=""
+            aria-hidden
+            className="h-[141px] w-[141px]"
+          />
+
+          <div className="flex flex-col items-center">
+            <CountUpNumber
+              value={FILLED_DAYS}
+              format={(n) => Math.round(n).toString().padStart(2, "0")}
+              className="font-display text-[88px] font-extrabold leading-none tracking-tight text-coral-on-bold"
+            />
+            <p className="font-display text-2xl font-black text-coral-on-bold">
+              Day Streak
+            </p>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial="hidden"
+          animate={revealed ? "visible" : "hidden"}
+          variants={{
+            visible: { transition: { staggerChildren: 0.07, delayChildren: 0.25 } },
+          }}
+          className="flex items-center gap-2"
+        >
+          {DAY_LABELS.map((day, i) => {
+            const filled = i < FILLED_DAYS;
+            return (
+              <motion.div
+                key={day}
+                variants={dayVariants}
+                className="flex flex-col items-center gap-2"
+              >
+                <span className="text-xs text-coral-on-bold/70">{day}</span>
+                <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                    filled ? "bg-coral-subtle" : "bg-interactive-disabled"
+                  }`}
+                >
+                  {filled && (
+                    <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden>
+                      <path
+                        d="M3 8.5l3 3 7-7"
+                        fill="none"
+                        stroke="var(--color-coral-on-subtle)"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      </div>
+
+      <BottomCta className="flex gap-2">
+        {/* Hand-rolled, not SecondaryButton — see recall-summary/page.tsx
+            for why (shared pillBase is w-full, breaks side-by-side). */}
+        <motion.button
+          whileTap={{ scale: 0.94 }}
+          transition={snappy}
+          onClick={() => console.log("[stub] Share tapped — not implemented")}
+          className="relative flex h-[58px] items-center justify-center rounded-full bg-interactive-secondary px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
+        >
+          <span className="font-display text-[18px] font-semibold text-interactive-on-secondary">
+            Share
+          </span>
+        </motion.button>
+        <PrimaryButton onClick={handleContinue} className="flex-1">
+          Continue
+        </PrimaryButton>
+      </BottomCta>
+    </div>
+  );
+}
