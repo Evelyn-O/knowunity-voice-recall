@@ -34,7 +34,7 @@ export function TextFallbackBody({
         <TextInput value={value} onChange={onChange} onSend={onSend} autoFocus />
       ) : (
         <>
-          <HighlightCard eyebrow="What you wrote.">{value}</HighlightCard>
+          <HighlightCard eyebrow="What you wrote:">{value}</HighlightCard>
           <div className="mt-10 flex flex-1 flex-col items-center">
             {stage === "sending" ? (
               <SendingIndicator onCancel={onCancelSending} />

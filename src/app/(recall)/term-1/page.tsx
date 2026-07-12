@@ -22,6 +22,7 @@ import {
   TrashIcon,
 } from "@/components/icons";
 import {
+  useLastInputMode,
   useMascotBubble,
   useMicPermissionGranted,
   useRecallChromeBlur,
@@ -30,9 +31,8 @@ import {
   useRecordTermOutcome,
   useRecordVoiceUsed,
   useRequestExit,
+  useSetLastInputMode,
   useSetMicPermissionGranted,
-  useSetTermInTextModeRequested,
-  useTermInTextModeRequested,
 } from "@/lib/recall-flow-context";
 import { useTermAttemptState } from "@/lib/term-attempt-state";
 import { gentle, sheet, snappy } from "@/lib/motion";
@@ -210,29 +210,21 @@ export default function TermOnePage() {
   const micPermissionGranted = useMicPermissionGranted();
   const setMicPermissionGranted = useSetMicPermissionGranted();
   const [micPermissionPromptOpen, setMicPermissionPromptOpen] = useState(false);
-  // One-shot: true only when /confidence-recurring's "Type instead" routed
-  // here for THIS visit — consumed (cleared) below so it never leaks into a
-  // later, unrelated visit to this term.
-  const termInTextModeRequested = useTermInTextModeRequested();
-  const setTermInTextModeRequested = useSetTermInTextModeRequested();
-
-  useEffect(() => {
-    if (termInTextModeRequested) setTermInTextModeRequested(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const lastInputMode = useLastInputMode();
+  const setLastInputMode = useSetLastInputMode();
 
   // Shared per-term attempt state (lib/term-attempt-state.ts) — term-1 never
   // branches on `outcome`/`attempt` itself (its script is a single unaided
   // pass), but still uses the same hook as every other term for inputMode/
   // typedAnswer, so the voice<->text switch behaves identically everywhere.
-  // Starting mode follows the session's mic-permission decision (denied/
-  // unconfirmed on the entry primer → text fallback here too, not voice) OR
-  // a one-shot "Type instead" request from /confidence-recurring — either
-  // way, switching back to voice still re-checks micPermissionGranted
-  // itself (switchToVoice below), untouched by this.
+  // Starting mode follows the student's last-chosen modality this session
+  // (lastInputMode), if any; otherwise falls back to the mic-permission
+  // decision (denied/unconfirmed on the entry primer → text fallback here
+  // too, not voice) — either way, switching back to voice still re-checks
+  // micPermissionGranted itself (switchToVoice below), untouched by this.
   const { inputMode, setInputMode, typedAnswer, setTypedAnswer } =
     useTermAttemptState<"unaided">(
-      micPermissionGranted && !termInTextModeRequested ? "voice" : "text"
+      lastInputMode ?? (micPermissionGranted ? "voice" : "text")
     );
 
   const capturedFramesRef = useRef<number[][]>([]);
@@ -408,9 +400,12 @@ export default function TermOnePage() {
   // — discarding an unsent voice take (nothing was ever "attempted" until
   // Send) or simply re-showing the mic. Never advances attempt/outcome:
   // this only changes how the current, still-pending attempt is presented.
+  // setLastInputMode carries the choice forward into every later term and
+  // retry this session, until changed again or the session resets.
   function switchToText() {
     deleteRecording();
     setInputMode("text");
+    setLastInputMode("text");
   }
   // If the mic isn't confirmed granted (denied on the entry primer, or
   // never asked at all), re-show that same primer instead of silently
@@ -419,6 +414,7 @@ export default function TermOnePage() {
     if (micPermissionGranted) {
       setStage("idle");
       setInputMode("voice");
+      setLastInputMode("voice");
     } else {
       setMicPermissionPromptOpen(true);
     }
@@ -428,6 +424,7 @@ export default function TermOnePage() {
     setMicPermissionPromptOpen(false);
     setStage("idle");
     setInputMode("voice");
+    setLastInputMode("voice");
   }
   function denyMicPrompt() {
     setMicPermissionPromptOpen(false);
@@ -455,7 +452,7 @@ export default function TermOnePage() {
             (term-1's voice Result never showed one). */}
         {inputMode === "text" && (
           <div className="pt-5">
-            <HighlightCard eyebrow="What you wrote.">{typedAnswer}</HighlightCard>
+            <HighlightCard eyebrow="What you wrote:">{typedAnswer}</HighlightCard>
           </div>
         )}
         {/* The dimmed prompt echo is the persistent MascotBubble in the

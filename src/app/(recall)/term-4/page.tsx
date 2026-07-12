@@ -22,6 +22,7 @@ import {
   TrashIcon,
 } from "@/components/icons";
 import {
+  useLastInputMode,
   useMascotBubble,
   useMicPermissionGranted,
   useRecallChromeBlur,
@@ -30,6 +31,7 @@ import {
   useRecordTermOutcome,
   useRecordVoiceUsed,
   useRequestExit,
+  useSetLastInputMode,
   useSetMicPermissionGranted,
   useTermOutcomes,
 } from "@/lib/recall-flow-context";
@@ -216,6 +218,8 @@ export default function TermFourPage() {
   const micPermissionGranted = useMicPermissionGranted();
   const setMicPermissionGranted = useSetMicPermissionGranted();
   const [micPermissionPromptOpen, setMicPermissionPromptOpen] = useState(false);
+  const lastInputMode = useLastInputMode();
+  const setLastInputMode = useSetLastInputMode();
 
   const capturedFramesRef = useRef<number[][]>([]);
   const recordRecallAttempted = useRecordRecallAttempted();
@@ -238,10 +242,13 @@ export default function TermFourPage() {
   // Shared per-term attempt state (lib/term-attempt-state.ts) — see term-1
   // for the rationale. Term-4 never branches on outcome/attempt itself
   // (single unaided-pass script), same as term-1. Starting mode follows
-  // the session's mic-permission decision (denied/unconfirmed on the entry
-  // primer → text fallback here too, not voice).
+  // the student's last-chosen modality this session (lastInputMode), if
+  // any; otherwise falls back to the mic-permission decision (denied/
+  // unconfirmed on the entry primer → text fallback here too, not voice).
   const { inputMode, setInputMode, typedAnswer, setTypedAnswer } =
-    useTermAttemptState<"unaided">(micPermissionGranted ? "voice" : "text");
+    useTermAttemptState<"unaided">(
+      lastInputMode ?? (micPermissionGranted ? "voice" : "text")
+    );
 
   const isTyping = inputMode === "text" && stage === "idle" && typedAnswer.length > 0;
   useMascotBubble({
@@ -393,6 +400,7 @@ export default function TermFourPage() {
   function switchToText() {
     deleteRecording();
     setInputMode("text");
+    setLastInputMode("text");
   }
   // If the mic isn't confirmed granted (denied on the entry primer, or
   // never asked at all), re-show that same primer instead of silently
@@ -401,6 +409,7 @@ export default function TermFourPage() {
     if (micPermissionGranted) {
       setStage("idle");
       setInputMode("voice");
+      setLastInputMode("voice");
     } else {
       setMicPermissionPromptOpen(true);
     }
@@ -410,6 +419,7 @@ export default function TermFourPage() {
     setMicPermissionPromptOpen(false);
     setStage("idle");
     setInputMode("voice");
+    setLastInputMode("voice");
   }
   function denyMicPrompt() {
     setMicPermissionPromptOpen(false);
@@ -442,7 +452,7 @@ export default function TermFourPage() {
       <div className="relative flex flex-1 flex-col px-4">
         {inputMode === "text" && (
           <div className="pt-5">
-            <HighlightCard eyebrow="What you wrote.">{typedAnswer}</HighlightCard>
+            <HighlightCard eyebrow="What you wrote:">{typedAnswer}</HighlightCard>
           </div>
         )}
         <motion.div

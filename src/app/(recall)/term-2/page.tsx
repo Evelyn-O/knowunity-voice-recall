@@ -23,6 +23,7 @@ import {
   TrashIcon,
 } from "@/components/icons";
 import {
+  useLastInputMode,
   useMascotBubble,
   useMicPermissionGranted,
   useRecallChromeBlur,
@@ -31,6 +32,7 @@ import {
   useRecordTermOutcome,
   useRecordVoiceUsed,
   useRequestExit,
+  useSetLastInputMode,
   useSetMicPermissionGranted,
 } from "@/lib/recall-flow-context";
 import { useTermAttemptState } from "@/lib/term-attempt-state";
@@ -219,14 +221,18 @@ export default function TermTwoPage() {
   const micPermissionGranted = useMicPermissionGranted();
   const setMicPermissionGranted = useSetMicPermissionGranted();
   const [micPermissionPromptOpen, setMicPermissionPromptOpen] = useState(false);
+  const lastInputMode = useLastInputMode();
+  const setLastInputMode = useSetLastInputMode();
 
   // Shared per-term attempt state (lib/term-attempt-state.ts) — attempt/
   // outcome/inputMode/typedAnswer all live here now instead of local
   // useState, so both the voice retry ladder and the text fallback read
   // and advance the exact same sequence position. Switching mode never
   // touches attempt/outcome, only how the current one is presented.
-  // Starting mode follows the session's mic-permission decision (denied/
-  // unconfirmed on the entry primer → text fallback here too, not voice).
+  // Starting mode follows the student's last-chosen modality this session
+  // (lastInputMode), if any; otherwise falls back to the mic-permission
+  // decision (denied/unconfirmed on the entry primer → text fallback here
+  // too, not voice).
   const {
     attempt,
     outcome,
@@ -236,7 +242,7 @@ export default function TermTwoPage() {
     setTypedAnswer,
     resolveOutcome,
     advanceAttempt,
-  } = useTermAttemptState<Outcome>(micPermissionGranted ? "voice" : "text");
+  } = useTermAttemptState<Outcome>(lastInputMode ?? (micPermissionGranted ? "voice" : "text"));
 
   const capturedFramesRef = useRef<number[][]>([]);
   const recordRecallAttempted = useRecordRecallAttempted();
@@ -421,6 +427,7 @@ export default function TermTwoPage() {
   function switchToText() {
     deleteRecording();
     setInputMode("text");
+    setLastInputMode("text");
   }
   // If the mic isn't confirmed granted (denied on the entry primer, or
   // never asked at all), re-show that same primer instead of silently
@@ -429,6 +436,7 @@ export default function TermTwoPage() {
     if (micPermissionGranted) {
       setStage("idle");
       setInputMode("voice");
+      setLastInputMode("voice");
     } else {
       setMicPermissionPromptOpen(true);
     }
@@ -438,6 +446,7 @@ export default function TermTwoPage() {
     setMicPermissionPromptOpen(false);
     setStage("idle");
     setInputMode("voice");
+    setLastInputMode("voice");
   }
   function denyMicPrompt() {
     setMicPermissionPromptOpen(false);
@@ -533,7 +542,7 @@ export default function TermTwoPage() {
             has no equivalent card here. */}
         {inputMode === "text" && (
           <div className="pt-5">
-            <HighlightCard eyebrow="What you wrote.">{typedAnswer}</HighlightCard>
+            <HighlightCard eyebrow="What you wrote:">{typedAnswer}</HighlightCard>
           </div>
         )}
         {/* The dimmed question echo is the persistent MascotBubble in the
@@ -603,7 +612,7 @@ export default function TermTwoPage() {
             partial/hint history isn't carried over into this view. */}
         {inputMode === "text" && (
           <div className="pt-5">
-            <HighlightCard eyebrow="What you wrote.">{typedAnswer}</HighlightCard>
+            <HighlightCard eyebrow="What you wrote:">{typedAnswer}</HighlightCard>
           </div>
         )}
         <motion.div

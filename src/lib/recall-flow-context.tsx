@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import type { InputMode } from "@/lib/term-attempt-state";
 
 /**
  * Shared state for the Voice Recall flow's persistent chrome
@@ -77,25 +78,36 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
  * voice: if it's still false, the term re-shows the mic primer instead of
  * silently switching, since we still don't actually have permission.
  *
- * `termInTextModeRequested` is a one-shot flag for the "Type instead" link
- * on the recurring-encounter merged screen (/confidence-recurring), which
- * is otherwise not itself a term and has no attempt state of its own. That
- * screen sets this true right before routing to /term-1 (the only entry
- * point into the term loop for a returning session), so term-1 can start
- * in text mode for THIS visit specifically — deliberately separate from
- * micPermissionGranted, which must stay untouched: a returning student who
- * already granted mic access on a prior session should still be able to
- * switch back to voice with no re-prompt, even though this particular
- * entry started in text. term-1 consumes (reads, then clears) this on
- * mount so it never leaks into a later, unrelated visit.
+ * `lastInputMode` is the student's most recently chosen modality (voice or
+ * text) this session, persisting forward across terms and retries — once
+ * a student taps "Type instead" or "Try with voice" anywhere, every
+ * subsequent term starts in that same mode instead of resetting to the
+ * micPermissionGranted-based default. `null` means no explicit choice has
+ * been made yet this session, in which case a term falls back to the
+ * original micPermissionGranted-based default (denied/unconfirmed → text,
+ * granted → voice). Every term's own switchToText/switchToVoice/
+ * allowMicAndSwitchToVoice sets this alongside its local inputMode state,
+ * and every term computes its OWN starting mode as
+ * `lastInputMode ?? (micPermissionGranted ? "voice" : "text")`. Also set
+ * by /confidence-recurring's "Type instead" link (which has no attempt
+ * state of its own) right before routing to /term-1, replacing the old
+ * one-shot `termInTextModeRequested` flag — unlike that flag, this is
+ * never cleared on read, only reset by resetRecallSession (a fresh
+ * Practice More restart goes back to the plain micPermissionGranted
+ * default, confirmed with Evelyn rather than assumed either way).
+ * Deliberately separate from micPermissionGranted itself, which must stay
+ * untouched: a returning student who already granted mic access should
+ * still be able to switch back to voice with no re-prompt, even if their
+ * last-used mode this session was text.
  *
  * `resetRecallSession` is called once, imperatively, by a "Try again"
  * handler (recall-summary/summary) right before routing into a NEW
- * session — clears termOutcomes/voiceUsedThisSession/recallAttempted back
- * to their defaults so term-4's "perfect lesson" check, the exit-routing
- * logic, and the summary flow all start fresh rather than reading stale
- * data left over from the just-finished session. Deliberately does NOT
- * touch micPermissionGranted — SPEC.md §2B: a returning student is assumed
+ * session — clears termOutcomes/voiceUsedThisSession/recallAttempted/
+ * lastInputMode back to their defaults so term-4's "perfect lesson"
+ * check, the exit-routing logic, the summary flow, and modality
+ * persistence all start fresh rather than reading stale data left over
+ * from the just-finished session. Deliberately does NOT touch
+ * micPermissionGranted — SPEC.md §2B: a returning student is assumed
  * already granted, so a prior grant must carry over, never re-asked.
  * Before clearing, it snapshots the outgoing `termOutcomes` into
  * `previousSessionOutcomes` — that's the one-session-back memory
@@ -157,7 +169,7 @@ type RecallChromeValue = {
   voiceUsedThisSession: boolean;
   recallAttempted: boolean;
   micPermissionGranted: boolean;
-  termInTextModeRequested: boolean;
+  lastInputMode: InputMode | null;
   exitConfirmOpen: boolean;
 };
 
@@ -172,7 +184,7 @@ const defaultValue: RecallChromeValue = {
   voiceUsedThisSession: false,
   recallAttempted: false,
   micPermissionGranted: false,
-  termInTextModeRequested: false,
+  lastInputMode: null,
   exitConfirmOpen: false,
 };
 
@@ -184,7 +196,7 @@ const RecallChromeContext = createContext<{
   recordRecallAttempted: () => void;
   fillRemainingTermsAsSkipped: () => void;
   setMicPermissionGranted: (granted: boolean) => void;
-  setTermInTextModeRequested: (requested: boolean) => void;
+  setLastInputMode: (mode: InputMode) => void;
   resetRecallSession: () => void;
   requestExit: () => void;
   cancelExit: () => void;
@@ -253,8 +265,8 @@ export function RecallChromeProvider({ children }: { children: React.ReactNode }
     setValue((prev) => ({ ...prev, micPermissionGranted: granted }));
   }, []);
 
-  const setTermInTextModeRequested = useCallback((requested: boolean) => {
-    setValue((prev) => ({ ...prev, termInTextModeRequested: requested }));
+  const setLastInputMode = useCallback((mode: InputMode) => {
+    setValue((prev) => ({ ...prev, lastInputMode: mode }));
   }, []);
 
   // Deliberately omits micPermissionGranted — see the doc comment above.
@@ -267,6 +279,7 @@ export function RecallChromeProvider({ children }: { children: React.ReactNode }
       termOutcomes: {},
       voiceUsedThisSession: false,
       recallAttempted: false,
+      lastInputMode: null,
     }));
   }, []);
 
@@ -288,7 +301,7 @@ export function RecallChromeProvider({ children }: { children: React.ReactNode }
         recordRecallAttempted,
         fillRemainingTermsAsSkipped,
         setMicPermissionGranted,
-        setTermInTextModeRequested,
+        setLastInputMode,
         resetRecallSession,
         requestExit,
         cancelExit,
@@ -452,19 +465,22 @@ export function useSetMicPermissionGranted() {
   return useRecallChromeContext().setMicPermissionGranted;
 }
 
-/** Read-only: did the recurring-encounter merged screen's "Type instead"
- * request that the upcoming term-1 visit start in text mode? One-shot —
- * term-1 consumes this on mount (reads it, then clears it via
- * useSetTermInTextModeRequested) so it never leaks into a later visit. */
-export function useTermInTextModeRequested() {
-  return useRecallChromeContext().value.termInTextModeRequested;
+/** Read-only: the student's most recently chosen modality this session
+ * (voice or text), or `null` if no explicit choice has been made yet.
+ * Every term falls back to the micPermissionGranted-based default when
+ * this is null; otherwise this wins, so a switch made anywhere carries
+ * forward into every later term and retry until changed again or the
+ * session resets (Practice More). */
+export function useLastInputMode() {
+  return useRecallChromeContext().value.lastInputMode;
 }
 
-/** Returns a stable setter — called by /confidence-recurring's "Type
- * instead" link (set true, right before routing to /term-1) and by
- * term-1 itself (set false, once consumed on mount). */
-export function useSetTermInTextModeRequested() {
-  return useRecallChromeContext().setTermInTextModeRequested;
+/** Returns a stable setter — called by every term's own switchToText/
+ * switchToVoice/allowMicAndSwitchToVoice, and by /confidence-recurring's
+ * "Type instead" link (which has no attempt state of its own but still
+ * needs to set the mode the upcoming /term-1 visit starts in). */
+export function useSetLastInputMode() {
+  return useRecallChromeContext().setLastInputMode;
 }
 
 /** Returns a stable function a "Try again" handler calls once, right

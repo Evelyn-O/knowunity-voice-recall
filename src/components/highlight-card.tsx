@@ -1,6 +1,8 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
+import { gentle } from "@/lib/motion";
 
 /**
  * The bordered "highlight card" pattern (design.md §4): reused for the
@@ -29,18 +31,26 @@ import { useLayoutEffect, useRef, useState } from "react";
  * the image doesn't load, and `border-brand-on-subtle` covers the same
  * case for the border color.
  *
- * Padding is 17px on every side, and the eyebrow-to-content gap is 4px —
- * both taken directly from Figma's rendered dev-mode values (16.586px/
- * 4.146px, which round to 17px/4px).
+ * Padding is 16px on every side (box edge to content), and the
+ * eyebrow-to-content gap is 4px.
+ *
+ * `dimmed` (opacity 0.5, same crossfade treatment as MascotBubble's own
+ * `dimmed` prop) is for term-3's hint screen specifically (Figma node
+ * 14030:16746) — the transcript card there is dimmed like the surrounding
+ * bubble thread, unlike its normal-opacity appearance on the wrong-result
+ * sheet (node 14030:16666). Defaults to false so every other caller is
+ * unaffected.
  */
 export function HighlightCard({
   eyebrow,
   children,
   variant = "transcript",
+  dimmed = false,
 }: {
   eyebrow: string;
   children: React.ReactNode;
   variant?: "definition" | "transcript";
+  dimmed?: boolean;
 }) {
   const isDefinition = variant === "definition";
   const borderWidth = isDefinition ? "20px" : "12px";
@@ -77,8 +87,10 @@ export function HighlightCard({
   }, [children, isDefinition]);
 
   return (
-    <div
-      className="w-full rounded-card border-solid border-brand-on-subtle bg-brand-subtle p-[17px]"
+    <motion.div
+      animate={{ opacity: dimmed ? 0.5 : 1 }}
+      transition={gentle}
+      className="w-full rounded-card border-solid border-brand-on-subtle bg-brand-subtle p-4"
       style={{
         borderWidth,
         borderImageSource: "url(/images/picture-this-box.svg)",
@@ -125,6 +137,6 @@ export function HighlightCard({
           />
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

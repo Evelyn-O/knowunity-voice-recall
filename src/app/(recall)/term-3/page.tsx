@@ -23,6 +23,7 @@ import {
   TrashIcon,
 } from "@/components/icons";
 import {
+  useLastInputMode,
   useMascotBubble,
   useMicPermissionGranted,
   useRecallChromeBlur,
@@ -31,6 +32,7 @@ import {
   useRecordTermOutcome,
   useRecordVoiceUsed,
   useRequestExit,
+  useSetLastInputMode,
   useSetMicPermissionGranted,
 } from "@/lib/recall-flow-context";
 import { useTermAttemptState } from "@/lib/term-attempt-state";
@@ -268,13 +270,15 @@ export default function TermThreePage() {
   const micPermissionGranted = useMicPermissionGranted();
   const setMicPermissionGranted = useSetMicPermissionGranted();
   const [micPermissionPromptOpen, setMicPermissionPromptOpen] = useState(false);
+  const lastInputMode = useLastInputMode();
+  const setLastInputMode = useSetLastInputMode();
 
   // Shared per-term attempt state (lib/term-attempt-state.ts) — see term-2
-  // for the full rationale. "Did Knowie mishear you?" is voice-only (text
-  // mode can't mishear something it never heard), so promptVariant/mishear
-  // stays local, separate from this shared state. Starting mode follows
-  // the session's mic-permission decision (denied/unconfirmed on the entry
-  // primer → text fallback here too, not voice).
+  // for the full rationale. promptVariant/mishear stays local, separate
+  // from this shared state. Starting mode follows the student's
+  // last-chosen modality this session (lastInputMode), if any; otherwise
+  // falls back to the mic-permission decision (denied/unconfirmed on the
+  // entry primer → text fallback here too, not voice).
   const {
     attempt,
     outcome,
@@ -284,7 +288,7 @@ export default function TermThreePage() {
     setTypedAnswer,
     resolveOutcome,
     advanceAttempt,
-  } = useTermAttemptState<Outcome>(micPermissionGranted ? "voice" : "text");
+  } = useTermAttemptState<Outcome>(lastInputMode ?? (micPermissionGranted ? "voice" : "text"));
 
   const capturedFramesRef = useRef<number[][]>([]);
   const recordRecallAttempted = useRecordRecallAttempted();
@@ -473,6 +477,7 @@ export default function TermThreePage() {
   function switchToText() {
     deleteRecording();
     setInputMode("text");
+    setLastInputMode("text");
   }
   // If the mic isn't confirmed granted (denied on the entry primer, or
   // never asked at all), re-show that same primer instead of silently
@@ -481,6 +486,7 @@ export default function TermThreePage() {
     if (micPermissionGranted) {
       setStage("idle");
       setInputMode("voice");
+      setLastInputMode("voice");
     } else {
       setMicPermissionPromptOpen(true);
     }
@@ -490,6 +496,7 @@ export default function TermThreePage() {
     setMicPermissionPromptOpen(false);
     setStage("idle");
     setInputMode("voice");
+    setLastInputMode("voice");
   }
   function denyMicPrompt() {
     setMicPermissionPromptOpen(false);
@@ -513,9 +520,12 @@ export default function TermThreePage() {
   // "Did Knowie mishear you?" — a correction, not a genuine retry: resets
   // to a clean Idle with adapted copy, but consumes no hint and does not
   // advance `attempt`, so the same scripted outcome is still what resolves
-  // once the student records again. Voice-only (nothing was "heard" if
-  // typed) — the link that calls this is hidden whenever inputMode is
-  // "text", so this never fires mid-text-attempt.
+  // once the student tries again. Available in both voice and text mode
+  // (Figma node 14030:16666 shows the link on the wrong-result sheet even
+  // in text mode) — never touches inputMode, so it lands back on Idle in
+  // whichever mode the student was already using; the voice-specific
+  // resets below (elapsed/capturedFrames/micBlocked) are just harmless
+  // no-ops when in text mode.
   function disputeMishear() {
     setPromptVariant("mishear");
     setElapsed(0);
@@ -551,7 +561,7 @@ export default function TermThreePage() {
   // Text mode swaps the transcript-echo card's content: instead of the
   // scripted "what I heard" line, it shows the real typed answer — same
   // HighlightCard, different eyebrow/content. Voice mode is unchanged.
-  const transcriptEyebrow = inputMode === "text" ? "What you wrote." : "What I heard.";
+  const transcriptEyebrow = inputMode === "text" ? "What you wrote:" : "What I heard:";
   function transcriptFor(index: number) {
     return inputMode === "text" ? typedAnswer : TRANSCRIPT_BY_ATTEMPT[index];
   }
@@ -561,11 +571,12 @@ export default function TermThreePage() {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pt-5">
-          {/* The transcript card isn't part of the dim/bright bubble cycle
-              — it stays at normal appearance as a persistent reference,
-              matching the Figma frame. Only the conversational bubbles
-              dim as the thread grows. */}
-          <HighlightCard eyebrow={transcriptEyebrow}>{transcriptFor(index)}</HighlightCard>
+          {/* Unlike the wrong-result sheet (where this same card stays at
+              normal opacity, node 14030:16666), the hint screen dims it to
+              match the surrounding bubble thread (Figma node 14030:16746). */}
+          <HighlightCard eyebrow={transcriptEyebrow} dimmed>
+            {transcriptFor(index)}
+          </HighlightCard>
           <MascotBubble pose="approving" alt="Noe, approving" text={WRONG_REPLY_BY_ATTEMPT[index]} dimmed />
           <MascotBubble pose="giggling" alt="Noe, giggling" text={HINT_BY_ATTEMPT[index]} />
         </div>
@@ -617,12 +628,11 @@ export default function TermThreePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={gentle}
           >
-            {/* Voice-only — nothing was "heard" if this attempt was typed. */}
-            {inputMode === "voice" && (
-              <TextLinkButton onClick={disputeMishear} className="mx-auto block">
-                Did Knowie mishear you?
-              </TextLinkButton>
-            )}
+            {/* Available in both voice and text mode (Figma node
+                14030:16666) — see disputeMishear's own comment. */}
+            <TextLinkButton onClick={disputeMishear} className="mx-auto block">
+              Did Knowie mishear you?
+            </TextLinkButton>
             <div className="mt-5">
               <MascotBubble pose="giggling" alt="Noe, giggling" text={REVEAL_TEXT} />
             </div>
@@ -642,7 +652,7 @@ export default function TermThreePage() {
           <div className="mx-auto mt-2 h-1 w-8 rounded-full bg-background-stacking" />
           <div className="flex items-center gap-2 px-7 pt-3">
             <img src="/images/revealed-answer-icon.svg" alt="" aria-hidden className="h-8 w-8 shrink-0" />
-            <p className="flex-1 font-display text-[26px] font-black text-brand-bold">
+            <p className="flex-1 font-display text-[29.025px] leading-[29.025px] font-black text-brand-bold">
               We&apos;ll do it next time!
             </p>
             <button aria-label="Dislike this reply">
@@ -676,12 +686,11 @@ export default function TermThreePage() {
         <div className="relative flex flex-1 flex-col px-4">
           <div className="flex flex-col gap-5 pt-5">
             <HighlightCard eyebrow={transcriptEyebrow}>{transcriptFor(index)}</HighlightCard>
-            {/* Voice-only — nothing was "heard" if this attempt was typed. */}
-            {inputMode === "voice" && (
-              <TextLinkButton onClick={disputeMishear} className="mx-auto block">
-                Did Knowie mishear you?
-              </TextLinkButton>
-            )}
+            {/* Available in both voice and text mode (Figma node
+                14030:16666) — see disputeMishear's own comment. */}
+            <TextLinkButton onClick={disputeMishear} className="mx-auto block">
+              Did Knowie mishear you?
+            </TextLinkButton>
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -749,7 +758,7 @@ export default function TermThreePage() {
             wrong/hint history isn't carried over into this view. */}
         {inputMode === "text" && (
           <div className="pt-5">
-            <HighlightCard eyebrow="What you wrote.">{typedAnswer}</HighlightCard>
+            <HighlightCard eyebrow="What you wrote:">{typedAnswer}</HighlightCard>
           </div>
         )}
         <motion.div
