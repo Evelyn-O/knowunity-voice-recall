@@ -263,11 +263,15 @@ export default function TermTwoPage() {
   // itself changing. While actively typing on Idle, swaps to "reading"
   // (same rule term-1 uses) ahead of the stage-based pose.
   const isTyping = inputMode === "text" && stage === "idle" && typedAnswer.length > 0;
+  // Checking it's default pose is "listening" (MASCOT_POSE), but that's a
+  // voice-specific idea — text fallback shows "reading" instead, since the
+  // student typed rather than spoke.
+  const isCheckingText = stage === "checking" && inputMode === "text";
   useMascotBubble({
     pose:
       stage === "result" || stage === "hint"
         ? "listening"
-        : isTyping
+        : isTyping || isCheckingText
           ? "reading"
           : MASCOT_POSE[stage],
     alt: "Noe",

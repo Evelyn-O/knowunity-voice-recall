@@ -234,11 +234,20 @@ export default function TermFivePage() {
     );
 
   const isTyping = inputMode === "text" && stage === "idle" && typedAnswer.length > 0;
+  // Checking it's default pose is "listening" (MASCOT_POSE), but that's a
+  // voice-specific idea — text fallback shows "reading" instead, since the
+  // student typed rather than spoke.
+  const isCheckingText = stage === "checking" && inputMode === "text";
   useMascotBubble(
     stage === "entry"
       ? null
       : {
-          pose: stage === "result" ? "listening" : isTyping ? "reading" : MASCOT_POSE[stage as MicStage],
+          pose:
+            stage === "result"
+              ? "listening"
+              : isTyping || isCheckingText
+                ? "reading"
+                : MASCOT_POSE[stage as MicStage],
           alt: "Noe",
           text: PROMPT,
           dimmed: stage === "result",

@@ -306,6 +306,10 @@ export default function TermThreePage() {
 
   const isMicStage = MIC_STAGES.includes(stage as MicStage);
   const isTyping = inputMode === "text" && stage === "idle" && typedAnswer.length > 0;
+  // Checking it's default pose is "listening" (MASCOT_POSE), but that's a
+  // voice-specific idea — text fallback shows "reading" instead, since the
+  // student typed rather than spoke.
+  const isCheckingText = stage === "checking" && inputMode === "text";
   // The persistent top bubble only ever shows the mishear-adapted line
   // while actually mid mic-loop for the retry it applies to — once
   // dimmed for a result/hint/reveal screen it always reverts to the
@@ -314,7 +318,11 @@ export default function TermThreePage() {
   // actively typing, swaps to "reading" (same rule term-1/2 use) ahead of
   // the stage-based pose.
   useMascotBubble({
-    pose: isMicStage ? (isTyping ? "reading" : MASCOT_POSE[stage as MicStage]) : "listening",
+    pose: isMicStage
+      ? isTyping || isCheckingText
+        ? "reading"
+        : MASCOT_POSE[stage as MicStage]
+      : "listening",
     alt: "Noe",
     text: isMicStage && promptVariant === "mishear" ? MISHEAR_PROMPT : PROMPT,
     dimmed: !isMicStage,

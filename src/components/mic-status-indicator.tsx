@@ -48,7 +48,7 @@ export function CheckingIndicator() {
           animate={{ scale: [1, 1.08, 1] }}
           transition={{ duration: 1, repeat: Infinity, repeatType: "reverse" }}
         >
-          <MascotImage pose="listening" alt="Noe, listening" size={80} />
+          <MascotImage pose="reading" alt="Noe, reading" size={80} />
         </motion.div>
       </div>
       <div className="mt-3 flex flex-col items-center gap-2">
