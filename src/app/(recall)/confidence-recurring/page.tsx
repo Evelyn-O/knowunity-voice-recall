@@ -4,18 +4,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BottomCta } from "@/components/bottom-cta";
 import { HighlightCard } from "@/components/highlight-card";
-import {
-  IconButton,
-  PrimaryButton,
-  SelectableButton,
-  TextLinkButton,
-} from "@/components/buttons";
-import { SkipForwardIcon } from "@/components/icons";
+import { PrimaryButton, SelectableButton, TextLinkButton } from "@/components/buttons";
 import {
   useMascotBubble,
   useRecallStep,
   useRequestExit,
-  useSetTermInTextModeRequested,
 } from "@/lib/recall-flow-context";
 
 const OPTIONS = [
@@ -53,11 +46,10 @@ export default function ConfidenceRecurringPage() {
     null
   );
 
-  // X and the skip-forward icon both now open the shared exit-confirm
+  // X (TopBar) and "Maybe later" both now open the shared exit-confirm
   // sheet instead of navigating directly — its "Leave" (owned by
   // (recall)/layout.tsx) is what actually routes to /streak.
   const requestExit = useRequestExit();
-  const setTermInTextModeRequested = useSetTermInTextModeRequested();
 
   useRecallStep({ currentStep: 2, totalSteps: 6, onExit: requestExit });
   useMascotBubble({
@@ -65,18 +57,6 @@ export default function ConfidenceRecurringPage() {
     alt: selected ? "Noe giggling" : "Noe, wearing sunglasses and a cap",
     text: selected ? SELECTED_PROMPT : DEFAULT_PROMPT,
   });
-
-  // SPEC.md §2B: this merged screen has no term-level attempt state of its
-  // own — Type instead just needs to carry "start in text mode" forward
-  // into term-1 (the only entry point into the term loop from here), same
-  // as the first-encounter fork's Type-instead/Don't-Allow branches do via
-  // micPermissionGranted. Deliberately doesn't touch micPermissionGranted
-  // itself, so a returning student who already granted mic access can
-  // still switch back to voice from term-1 with no re-prompt.
-  function handleTypeInstead() {
-    setTermInTextModeRequested(true);
-    router.push("/term-1");
-  }
 
   function handleLetsGo() {
     router.push("/term-1");
@@ -105,21 +85,20 @@ export default function ConfidenceRecurringPage() {
         </div>
       </div>
 
+      {/* Skip icon-button + "Type instead" link removed per feedback.md —
+          matches the first-encounter fork's own "Let's go!" + "Maybe
+          later" shape now (same functionality as the entry screen's
+          "Maybe later": the clean, no-penalty exit already locked at
+          spec §5.1, via the shared exit-confirm sheet). A returning
+          student who wants to type instead gets there from term-1's own
+          idle screen, whose mode-switch pill already offers "Type
+          instead" — not gone, just one screen later. */}
       <BottomCta className="flex flex-col gap-2">
-        <div className="flex gap-2">
-          <IconButton aria-label="Skip this session" onClick={requestExit}>
-            <SkipForwardIcon className="h-6 w-6 text-text-primary" />
-          </IconButton>
-          <PrimaryButton
-            disabled={!selected}
-            onClick={handleLetsGo}
-            className="flex-1"
-          >
-            Let&apos;s go!
-          </PrimaryButton>
-        </div>
-        <TextLinkButton className="mx-auto" onClick={handleTypeInstead}>
-          Type instead
+        <PrimaryButton disabled={!selected} onClick={handleLetsGo}>
+          Let&apos;s go!
+        </PrimaryButton>
+        <TextLinkButton className="mx-auto" onClick={requestExit}>
+          Maybe later
         </TextLinkButton>
       </BottomCta>
     </div>

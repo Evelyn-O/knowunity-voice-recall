@@ -49,3 +49,74 @@ Typing is a real parallel option offered at the entry fork itself, not something
 - Never blocking — soft-gated; skip/exit must always be reachable in one tap.
 - Community signal capped at one passive, anonymous element on the summary screen — nothing visible, competitive, or inside the recall loop, and it's unshipped until Harry signs off.
 - Not this sprint: pause/resume into one take, mid-answer language switching, mic-hardware-busy handling — known gaps, explicitly out of scope.
+
+## Testing Findings (Module 5 — The Stress Test)
+
+5 moderated sessions (Paula, Yomar, Raquel, Teresa, Heber) tested the Module 4
+prototype against the four riskiest assumptions: confidence-tap honesty,
+mic-denial → text-fallback discoverability, hint-ladder drop-off, and STT/judge
+trust. Full synthesis and per-item fixes live in `feedback.md` (handoff doc for
+Module 6). This section holds the load-bearing summary.
+
+**Top findings:**
+
+- **Judge results don't reliably match what students said** (3/5: Yomar, Raquel,
+Paula*) — including "I don't know" scored as correct, and an unrelated answer
+scored as correct. This is the sharpest hit on the north star: trust anxiety is
+exactly what "costs nothing to get wrong" depends on, and a wrong verdict reads
+as the system lying, not as a fair miss.
+- **Skip reads as exiting the whole session, not the current term** (3/5: Yomar,
+Teresa, Heber). Threatens both "never trap the student" and "soft-gated, never
+blocking" at once — if skip feels more consequential than it is, students avoid
+using it when they'd actually benefit from it.
+- **"I can't speak right now" copy is ambiguous** (2/5: Teresa, Heber) — read as
+a command/state rather than a tappable action. Both testers independently
+proposed the same fix ("Type instead"), which is a strong signal it's the right
+one.
+- **Students want to see what was captured, not just be told a verdict**
+(explicit: Paula; reinforced by the same trust gap in Yomar/Raquel's mismatch
+reports above). A transcript view and the mishearing-recovery flow are the same
+underlying need and should be designed together.
+- **Modality choice tracks confidence and framing, not voice comfort** (2/5:
+Raquel, Paula) — Raquel typed on uncertain terms and voiced confident ones;
+Paula converted to voice once the task was framed as "explain it out loud,"
+not because she was told to. Genuinely open whether this is the text fallback
+working as designed or voice still feeling risky when unsure — not resolved by
+this round.
+
+**What's getting fixed (Module 6):**
+
+- Ship the already-locked 4.7 mishearing-recovery flow, paired with a visible
+transcript view — same fix, same screen.
+- Relabel skip with explicit per-term copy ("Skip this term").
+- Rename the can't-speak fallback to "Type instead."
+- Add a first-use "Tap to talk" affordance (tap-vs-hold gesture confusion hit
+one tester but fully blocks voice for anyone sharing that mental model).
+- Hint-content relevance pass, "Try Again" copy expectation-setting, and a
+short list of prototype-fidelity bugs — all copy/content fixes, no mechanic
+changes.
+- **Blocked, not scheduled:** a "why" explanation on the result screen, and any
+change to modality defaults or nudging toward voice. Both are real fixes but
+each touches an open question or the brief's Non-Goal #1 (no tutoring/open
+Q&A) — held until I sign off explicitly, item by item, and "why" separately
+needs Harry's read since it's a brief-level constraint, not a design call.
+
+**What worked well — protect this going into Module 6:**
+
+- 5/5 said they'd use the real app. One tester (Raquel) independently reframed
+it as an end-of-study weak-spot diagnostic rather than a mid-study checkpoint —
+worth carrying to launch positioning, separate from the UX fixes above.
+- Near-unanimous persistence: no skip-abuse, no boredom, no early exits, even
+against content nobody actually knew. Zero reveal-seeking anywhere in the data.
+This is the strongest evidence the "peer, not evaluator" mechanism is doing its
+job — don't let the fixes above dilute it.
+- The intro illustration/mascot landed exactly as designed — unprompted delight,
+not a single complaint. Validates the "swag, not study" tone bet; don't restyle
+without reason.
+- The hint ladder itself works when hint content is on-topic (Heber
+self-corrected across multiple terms using it as designed) — the fix above is
+content-authoring, not the mechanic.
+
+**Still open, not resolved by this round:** confidence-tap honesty (zero UX
+friction observed, but that only confirms the screen isn't confusing — it says
+nothing about whether the tap was a genuine prediction or a reflexive one).

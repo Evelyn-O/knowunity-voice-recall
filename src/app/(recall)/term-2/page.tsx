@@ -7,7 +7,7 @@ import { MascotBubble } from "@/components/mascot-bubble";
 import { MascotImage } from "@/components/mascot-image";
 import { BottomCta } from "@/components/bottom-cta";
 import { HighlightCard } from "@/components/highlight-card";
-import { IconButton, TextLinkButton } from "@/components/buttons";
+import { TextLinkButton } from "@/components/buttons";
 import { MicLoopBottomBar } from "@/components/mic-loop-bottom-bar";
 import { TextFallbackBody } from "@/components/text-fallback-body";
 import { SkipConfirmSheet } from "@/components/skip-confirm-sheet";
@@ -18,7 +18,6 @@ import {
   PauseIcon,
   PlayIcon,
   SendIcon,
-  SkipForwardIcon,
   ThumbsDownIcon,
   ThumbsUpIcon,
   TrashIcon,
@@ -459,14 +458,6 @@ export default function TermTwoPage() {
     setMicBlocked(false);
     setStage("idle");
   }
-  // The hint screen's "Type instead" link — same retry as "Try again",
-  // just switching presentation to text first. Confirms this task's own
-  // example: a voice attempt that resolved "partial" then switches to
-  // text sees the NEXT scripted outcome on the retry, not a restart.
-  function tryAgainWithText() {
-    setInputMode("text");
-    tryAgain();
-  }
   function requestHint() {
     setStage("hint");
   }
@@ -495,32 +486,32 @@ export default function TermTwoPage() {
         </div>
 
         {/* Hint reveals inline in the thread, sheet dismisses, bottom bar
-            becomes skip-icon + "Try again" (primary) + "Type instead"
-            (link) — SPEC.md §3 state 6's partial description. Distinct
-            from the mic-loop's BottomBar: no mic circle shown here, this
-            is a dedicated "waiting for the retry tap" moment. */}
+            becomes "Try again" (primary) + "Skip to next question" (link)
+            only — SPEC.md §3 state 6's partial description, skip control
+            updated per feedback.md [L] "Skip must not read as exiting the
+            whole session" (icon-only skip read as ending the session, not
+            the term). No separate "Type instead" here (Figma node
+            13900:26321): the retry itself lands back on Idle, whose own
+            mode-switch pill already offers "Type instead" there — this
+            screen doesn't need to duplicate it. Distinct from the
+            mic-loop's BottomBar: no mic circle shown here, this is a
+            dedicated "waiting for the retry tap" moment. */}
         <BottomCta className="flex flex-col gap-2">
-          <div className="flex gap-2">
-            <IconButton
-              aria-label="Skip this term"
-              variant="tertiary"
-              onClick={() => setSkipConfirmOpen(true)}
-            >
-              <SkipForwardIcon className="h-6 w-6 text-text-primary" />
-            </IconButton>
-            <motion.button
-              whileTap={{ scale: 0.94 }}
-              transition={snappy}
-              onClick={tryAgain}
-              className="relative flex h-[58px] flex-1 items-center justify-center gap-2 rounded-full bg-interactive-primary px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
-            >
-              <span className="font-display text-[18px] font-bold text-interactive-on-primary">
-                Try again
-              </span>
-            </motion.button>
-          </div>
-          <TextLinkButton className="mx-auto" onClick={tryAgainWithText}>
-            Type instead
+          <motion.button
+            whileTap={{ scale: 0.94 }}
+            transition={snappy}
+            onClick={tryAgain}
+            className="relative flex h-[58px] w-full items-center justify-center gap-2 rounded-full bg-interactive-primary px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
+          >
+            <span className="font-display text-[18px] font-bold text-interactive-on-primary">
+              Try again
+            </span>
+          </motion.button>
+          <TextLinkButton
+            className="mx-auto"
+            onClick={() => setSkipConfirmOpen(true)}
+          >
+            Skip to next question
           </TextLinkButton>
         </BottomCta>
 

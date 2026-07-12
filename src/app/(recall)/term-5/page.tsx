@@ -7,7 +7,7 @@ import { MascotBubble } from "@/components/mascot-bubble";
 import { MascotImage } from "@/components/mascot-image";
 import { BottomCta } from "@/components/bottom-cta";
 import { HighlightCard } from "@/components/highlight-card";
-import { IconButton, PrimaryButton } from "@/components/buttons";
+import { PrimaryButton, TextLinkButton } from "@/components/buttons";
 import { MicLoopBottomBar } from "@/components/mic-loop-bottom-bar";
 import { TextFallbackBody } from "@/components/text-fallback-body";
 import { SkipConfirmSheet } from "@/components/skip-confirm-sheet";
@@ -18,7 +18,6 @@ import {
   PauseIcon,
   PlayIcon,
   SendIcon,
-  SkipForwardIcon,
   ThumbsDownIcon,
   ThumbsUpIcon,
   TrashIcon,
@@ -462,17 +461,21 @@ export default function TermFivePage() {
           </div>
         </div>
 
-        <BottomCta className="flex gap-2">
-          <IconButton
-            aria-label="Skip this term"
-            variant="tertiary"
-            onClick={() => setSkipConfirmOpen(true)}
-          >
-            <SkipForwardIcon className="h-6 w-6 text-text-primary" />
-          </IconButton>
-          <PrimaryButton onClick={() => setStage("idle")} className="flex-1">
+        {/* Skip control updated per feedback.md [L] "Skip must not read as
+            exiting the whole session" — text link below the primary CTA,
+            same treatment as the entry screen's "Maybe later", instead of
+            an icon-only button. This is the absolute last term the session
+            can reach, so the label names the real destination directly. */}
+        <BottomCta className="flex flex-col gap-2">
+          <PrimaryButton onClick={() => setStage("idle")}>
             Continue
           </PrimaryButton>
+          <TextLinkButton
+            className="mx-auto"
+            onClick={() => setSkipConfirmOpen(true)}
+          >
+            Skip to summary
+          </TextLinkButton>
         </BottomCta>
 
         <SkipConfirmSheet
@@ -571,6 +574,7 @@ export default function TermFivePage() {
             onSkip={() => setSkipConfirmOpen(true)}
             inputMode={inputMode}
             onSwitchMode={switchToVoice}
+            skipLabel="Skip to summary"
           />
 
           <SkipConfirmSheet
@@ -770,6 +774,7 @@ export default function TermFivePage() {
         onSkip={() => setSkipConfirmOpen(true)}
         inputMode={inputMode}
         onSwitchMode={switchToText}
+        skipLabel="Skip to summary"
       />
 
       <SkipConfirmSheet

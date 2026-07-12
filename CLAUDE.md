@@ -953,6 +953,12 @@ From the spec's "Constraints — do NOT build" section:
 
 
 ## Where things live (point, don't paste)
+- feedback.md — Evelyn's prioritized fix-list from user testing (Module 5
+  → Module 6). **Read this before making fixes** — it's the actual work
+  queue, not background reading. When asked to fix something, change what
+  it lists and nothing beyond that; anything it doesn't flag (or that
+  testers confirmed working) stays as-is, protected from incidental
+  "while I'm in there" changes.
 - SPEC.md — the build plan; wins over sprint-context.md for anything
   sprint-context.md marked as an open question (see "Working with
   sprint-context.md and SPEC.md" above)

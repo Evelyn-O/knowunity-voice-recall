@@ -67,11 +67,20 @@ export function SecondaryButton({ children, className = "", ...props }: ButtonPr
 }
 
 /**
- * Vertically-stacked pill option (design.md §4 "Options / input area" —
+ * Vertically-stacked selection box (design.md §4 "Options / input area" —
  * MCQ / confidence-tap pattern). Selected swaps fill to accent/brand/subtle
  * and text to accent/brand/bold (Figma node 13900:25634); unselected stays
  * background/surface + text/primary, matching PrimaryButton/SecondaryButton
  * sizing so the three states read as one family.
+ *
+ * Corner radius is 16px, not the pill/rounded-full shape PrimaryButton and
+ * SecondaryButton use — Figma node 13900:24869 draws this as a selection
+ * box, not a button. `!rounded-bubble` overrides pillBase's `rounded-full`
+ * on this variant only (`!` forces it past Tailwind's same-specificity
+ * cascade-order gotcha — see buttons.tsx's own note above on typography —
+ * rather than hardcoding 16px, this binds to the existing --radius-bubble
+ * token (globals.css), the same named 16px value the text-fallback input
+ * container's corner radius already matches.
  */
 export function SelectableButton({
   children,
@@ -82,7 +91,7 @@ export function SelectableButton({
   return (
     <motion.button
       {...tap}
-      className={`${pillBase} font-sans text-[18px] font-medium tracking-[0.18px] ${
+      className={`${pillBase} !rounded-bubble font-sans text-[18px] font-medium tracking-[0.18px] ${
         selected
           ? "bg-brand-subtle text-brand-bold"
           : "bg-background-surface text-text-primary"

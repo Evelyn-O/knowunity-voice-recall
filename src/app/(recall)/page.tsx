@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import { MascotImage } from "@/components/mascot-image";
 import { HighlightCard } from "@/components/highlight-card";
 import { BottomCta } from "@/components/bottom-cta";
-import { PrimaryButton, SecondaryButton, TextLinkButton } from "@/components/buttons";
+import { PrimaryButton, TextLinkButton } from "@/components/buttons";
 import { IosPermissionDialog } from "@/components/ios-permission-dialog";
 import {
   useMascotBubble,
@@ -106,13 +106,17 @@ export default function EntryScreen() {
           </div>
         </div>
 
+        {/* "Type instead" removed per feedback.md — this fork now only
+            offers "Let's go!" (voice-first) and "Maybe later" (exit); a
+            student who wants to type gets there via "Don't Allow" on the
+            mic-permission dialog below, or from term-1's own idle screen
+            once there (its mode-switch pill already offers "Type
+            instead") — the modality choice now happens slightly later,
+            not gone. */}
         <BottomCta className="flex flex-col gap-2">
           <PrimaryButton onClick={() => setPermissionOpen(true)}>
             Let&apos;s go!
           </PrimaryButton>
-          <SecondaryButton onClick={() => goToConfidence("type")}>
-            Type instead
-          </SecondaryButton>
           <TextLinkButton
             className="mx-auto mt-1"
             onClick={requestExit}
