@@ -281,7 +281,12 @@ export default function SummaryPage() {
                 Try again
               </span>
             </motion.button>
-            <PrimaryButton onClick={endSession} className="flex-1">
+            {/* Confirms SPEC.md §2D's own "inferred — confirm" note: Claim
+                XP loops back to a fresh confidence tap for a new practice
+                round, same destination logic as "Try again" right next to
+                it (including the all-skipped carve-out to the first-time
+                entry fork) — not a session-ending action on this variant. */}
+            <PrimaryButton onClick={handleTryAgain} className="flex-1">
               Claim XP
             </PrimaryButton>
           </>

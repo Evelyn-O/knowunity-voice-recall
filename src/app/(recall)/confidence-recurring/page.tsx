@@ -18,7 +18,7 @@ const OPTIONS = [
 ] as const;
 
 const DEFAULT_PROMPT =
-  "How confident do you feel to test your knowledge saying it out loud?";
+  "We’re about to test what you’ve learned in your own words, before we get started, how confident do you feel?";
 const SELECTED_PROMPT = "Let’s find out!";
 
 /**

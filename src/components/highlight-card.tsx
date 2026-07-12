@@ -1,3 +1,7 @@
+"use client";
+
+import { useLayoutEffect, useRef, useState } from "react";
+
 /**
  * The bordered "highlight card" pattern (design.md §4): reused for the
  * definition/preview card ("Picture this: …", Figma node 13900:26421,
@@ -40,6 +44,38 @@ export function HighlightCard({
 }) {
   const isDefinition = variant === "definition";
   const borderWidth = isDefinition ? "20px" : "12px";
+
+  const contentRef = useRef<HTMLParagraphElement>(null);
+  const [thumb, setThumb] = useState<{ top: number; height: number } | null>(null);
+
+  // Same measured-thumb approach as TextInput (components/text-input.tsx)
+  // — a real native scrollbar is hidden (.no-scrollbar) in favor of a
+  // hand-drawn 8px rounded thumb (interactive/disabled) shown only once
+  // content actually overflows, tracking scrollTop like a real scrollbar
+  // would. `top` is offset by the content <p>'s own offsetTop within the
+  // relative wrapper (not hardcoded), so it lands correctly below the
+  // eyebrow regardless of caller-to-caller eyebrow length.
+  const measure = () => {
+    const el = contentRef.current;
+    if (!el) return;
+    if (el.scrollHeight <= el.clientHeight + 1) {
+      setThumb(null);
+      return;
+    }
+    const trackHeight = el.clientHeight;
+    const thumbHeight = Math.max(24, (trackHeight / el.scrollHeight) * trackHeight);
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    const thumbTop = maxScroll > 0 ? (el.scrollTop / maxScroll) * (trackHeight - thumbHeight) : 0;
+    setThumb({ top: el.offsetTop + thumbTop, height: thumbHeight });
+  };
+
+  // Only the transcript variant scrolls — a typed/heard answer can run
+  // long, but the definition preview is always a short single line in
+  // Figma, so it never needs measuring.
+  useLayoutEffect(() => {
+    if (!isDefinition) measure();
+  }, [children, isDefinition]);
+
   return (
     <div
       className="w-full rounded-card border-solid border-brand-on-subtle bg-brand-subtle p-[17px]"
@@ -51,7 +87,7 @@ export function HighlightCard({
         borderImageRepeat: "stretch",
       }}
     >
-      <div className="flex flex-col gap-[4px] text-left">
+      <div className="relative flex flex-col gap-[4px] text-left">
         <p
           className={`font-display text-[18.659px] font-medium leading-[24.879px] tracking-[0.187px] ${
             isDefinition ? "text-brand-on-subtle" : "text-brand-bold"
@@ -62,16 +98,32 @@ export function HighlightCard({
         {/* Only the transcript variant scrolls — a typed/heard answer can
             run long, but the definition preview is always a short single
             line in Figma. Scoped to the content paragraph, not the whole
-            card, so the eyebrow stays pinned above it. */}
-        <p
-          className={`font-sans text-text-primary ${
-            isDefinition
-              ? "text-[15.549px] font-medium leading-[20.732px] tracking-[0.155px]"
-              : "max-h-[145.25px] overflow-y-auto text-[12.439px] font-light leading-[16.586px] tracking-[0.124px]"
-          }`}
-        >
-          {children}
-        </p>
+            card, so the eyebrow stays pinned above it. break-words +
+            overflow-x-hidden fix the horizontal-scroll bug a long
+            unbroken token (no spaces) used to cause — overflow-y-auto
+            alone computes overflow-x to "auto" too (CSS overflow spec),
+            not "hidden", so without an explicit wrap rule a long token
+            could overflow sideways instead of wrapping. */}
+        {isDefinition ? (
+          <p className="font-sans text-[15.549px] font-medium leading-[20.732px] tracking-[0.155px] text-text-primary">
+            {children}
+          </p>
+        ) : (
+          <p
+            ref={contentRef}
+            onScroll={measure}
+            className="no-scrollbar max-h-[145.25px] overflow-y-auto overflow-x-hidden break-words pr-3 font-sans text-[12.439px] font-light leading-[16.586px] tracking-[0.124px] text-text-primary"
+          >
+            {children}
+          </p>
+        )}
+        {thumb && (
+          <div
+            aria-hidden
+            className="absolute w-2 rounded-full bg-interactive-disabled"
+            style={{ right: "-9px", top: thumb.top, height: thumb.height }}
+          />
+        )}
       </div>
     </div>
   );
