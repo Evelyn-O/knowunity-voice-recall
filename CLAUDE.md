@@ -627,6 +627,97 @@ unaffected by the group — `/`, `/confidence`, `/confidence-recurring`, etc.):
     prior = worse than unaided" — regression/no-change combinations
     weren't asked for and would need invented tone-sensitive copy, so
     they intentionally keep today's existing caption.
+- **Confidence-tap copy unified across first-time and returning
+  encounters.** `/confidence` and `/confidence-recurring` now share the
+  exact same `DEFAULT_PROMPT` — "We're about to test what you've learned
+  in your own words, before we get started, how confident do you feel?"
+  — replacing each screen's own previously-different wording. Straight
+  copy swap, no logic change.
+- **"Claim XP" on `/summary`'s full variant now routes like "Try
+  again."** Previously called `endSession()` (→ `/`, the first-time
+  entry fork) unconditionally — the only summary button that never got
+  wired to the recurring-flow logic when everything else did. Now calls
+  the same `handleTryAgain()` "Try again" already used (reset + route to
+  `/confidence-recurring`, with the existing all-skipped carve-out to
+  `/`), confirming SPEC.md §2D's own "inferred — confirm" note that
+  Claim XP loops back to a fresh confidence tap. The no-recall/simplified
+  variant's own "Claim XP" (→ `/`, since that student never engaged with
+  recall) is untouched — still correct there.
+- **`HighlightCard` — horizontal-scroll bug fixed, dimmed variant added,
+  padding/title copy corrected.**
+  - **Horizontal-scroll bug**: `overflow-y-auto` alone doesn't stop
+    `overflow-x` from computing to `auto` too (CSS overflow spec) — a
+    long unbroken typed token (no spaces) could overflow the box
+    sideways instead of wrapping. Fixed with `break-words` (wrap) +
+    explicit `overflow-x-hidden` (a hard guarantee, not just implicit
+    `auto`).
+  - **Vertical scroll thumb added** — same measured-thumb approach as
+    `TextInput` (`components/text-input.tsx`): native scrollbar hidden
+    (`.no-scrollbar`), a hand-drawn 8px `rounded-full`
+    `bg-interactive-disabled` thumb shown only once content overflows
+    past the 145.25px cap, tracking real `scrollTop`. Position
+    (`right: -9px`) taken directly from Figma node `13900:25130`'s
+    dev-mode data.
+  - **`dimmed` prop added** (opacity 0.5, same crossfade treatment as
+    `MascotBubble`'s own `dimmed`) — used only by term-3's hint screen
+    (Figma `14030:16746`), where the transcript card dims along with the
+    surrounding bubble thread, unlike its normal-opacity appearance
+    everywhere else (e.g. the wrong-result sheet, Figma `14030:16666`).
+  - **Padding corrected to 16px** on every side (was `17px`, itself a
+    rounding of Figma's `16.586px` — the correct value is a clean 16px,
+    not a Figma-fraction round).
+  - **Title copy**: "What you wrote"/"What I heard"/"Picture this" all
+    now end in a colon, not a period, everywhere they appear (5 terms +
+    `text-fallback-body.tsx`).
+- **"Did Knowie mishear you?" now available in text mode, not just
+  voice.** Previously gated behind `inputMode === "voice"` at both its
+  occurrences (term-3's wrong-result sheet and Reveal screen) under the
+  reasoning "nothing was heard if typed" — per Figma node `14030:16666`
+  (which shows the link present even when the box reads "What you
+  wrote:") and explicit instruction, that gate is removed; the
+  underlying `disputeMishear()` handler needed no changes since it never
+  touched `inputMode` to begin with.
+- **Modality (voice/text) now persists across terms and retries — no
+  more silently resetting to the mic-permission default.** Previously,
+  every term computed its own starting `inputMode` purely from
+  `micPermissionGranted` (denied/unconfirmed → text, granted → voice),
+  so switching to text on term 2 and continuing to term 3 would silently
+  snap back to voice if permission had ever been granted. Fixed via a
+  new `lastInputMode: InputMode | null` context field
+  (`lib/recall-flow-context.tsx`) — `null` until the student makes an
+  explicit choice, then holds `"voice"` or `"text"` until changed again.
+  Every term now computes its starting mode as
+  `lastInputMode ?? (micPermissionGranted ? "voice" : "text")`, and every
+  term's own `switchToText`/`switchToVoice`/`allowMicAndSwitchToVoice`
+  sets it alongside the local `inputMode` state. Replaces the older
+  one-shot `termInTextModeRequested` flag entirely (that flag only
+  covered the single confidence-recurring → term-1 handoff and cleared
+  itself on read; `lastInputMode` is general-purpose and persists).
+  **Deliberately resets at Practice More** (`resetRecallSession()` now
+  also clears `lastInputMode`), confirmed with Evelyn rather than
+  assumed — a fresh restart goes back to the plain
+  `micPermissionGranted`-based default, same as a first-ever session.
+- **Term-3's reveal-sheet title fixed to render on 1 line.** "We'll do
+  it next time!" now uses Figma's exact `29.025px` font-size **and**
+  line-height (100%, no extra leading) for node `13900:26243`, instead
+  of an unspecified-line-height `26px` that wrapped to 2 lines. Nothing
+  else on the reveal screen touched (copy, icon, buttons, spacing all
+  as-is).
+- **Text-fallback's "Checking it" mascot now reads, not listens.**
+  `CheckingIndicator` (`components/mic-status-indicator.tsx`, the shared
+  Sending/Checking markup used only by the text-fallback path) and every
+  term's own persistent top bubble now show `knowie-reading.svg` instead
+  of `knowie-listening.svg` while checking a *typed* answer — "listening"
+  never made sense for something the student typed rather than said
+  aloud. Scoped narrowly to the Checking stage specifically
+  (`stage === "checking" && inputMode === "text"`); voice mode's own
+  Checking (and its separate big-mic-button mascot) is completely
+  unchanged, and the Result/Hint/Reveal screens' dimmed top-bubble pose
+  still shows "listening" regardless of mode — a deliberate scope
+  decision (those screens use materially different per-term ternary
+  structures, and the request was read as describing the active "using
+  text fallback" moment, not every downstream screen) flagged back to
+  Evelyn rather than silently expanded.
 
 Shared infrastructure (all under `src/`):
 - `app/(recall)/layout.tsx` + `lib/recall-flow-context.tsx` — the
@@ -686,12 +777,28 @@ Shared infrastructure (all under `src/`):
     `useSetMicPermissionGranted`) — the mocked OS mic-permission decision,
     false by default (covers both an explicit "Don't Allow" and never
     having seen the primer at all, e.g. "Type instead"). Every term reads
-    this to pick its own starting `inputMode` (`useTermAttemptState` now
-    takes an optional initial-mode arg) and re-checks it before switching
-    text→voice mid-term, re-showing the mocked `IosPermissionDialog`
-    locally (each term owns its own `micPermissionPromptOpen` state +
-    blur/scrim, reusing the entry screen's exact pattern) rather than
-    silently switching without real permission.
+    this as the *fallback* for its own starting `inputMode` — see
+    `lastInputMode` immediately below for the value that actually wins
+    once the student has made an explicit choice this session
+    (`useTermAttemptState` takes an optional initial-mode arg either
+    way) — and re-checks it before switching text→voice mid-term,
+    re-showing the mocked `IosPermissionDialog` locally (each term owns
+    its own `micPermissionPromptOpen` state + blur/scrim, reusing the
+    entry screen's exact pattern) rather than silently switching without
+    real permission.
+  - **`lastInputMode`** (`useLastInputMode`/`useSetLastInputMode`) — the
+    student's most recently chosen modality this session (`"voice"` |
+    `"text"`), or `null` if no explicit choice has been made yet. Every
+    term computes its starting mode as
+    `lastInputMode ?? (micPermissionGranted ? "voice" : "text")`, and
+    every term's own `switchToText`/`switchToVoice`/
+    `allowMicAndSwitchToVoice` sets it alongside the local `inputMode`
+    state — so a switch made on any term carries forward into every
+    later term and retry until changed again, instead of silently
+    resetting to the `micPermissionGranted` default each time. Also set
+    by /confidence-recurring's own mode-choosing actions where it has
+    them. Reset only by `resetRecallSession()` (Practice More) — see
+    that hook's own doc comment below.
   - **`recallAttempted`** (`useRecordRecallAttempted`/`useRecallAttempted`)
     — was at least one real attempt (voice or text) ever *submitted* this
     session, set at send-time (before Continue), regardless of whether
@@ -714,10 +821,14 @@ Shared infrastructure (all under `src/`):
   - **`resetRecallSession()`** (`useResetRecallSession`) — called once by
     a "Try again" handler right before routing into a new session (either
     `/confidence-recurring`, or `/` if every term was skipped last time).
-    Clears `termOutcomes`/`voiceUsedThisSession`/`recallAttempted` back to
-    defaults; deliberately does NOT touch `micPermissionGranted` (SPEC.md
-    §2B: a returning student's prior grant must carry over, never
-    re-asked).
+    Clears `termOutcomes`/`voiceUsedThisSession`/`recallAttempted`/
+    `lastInputMode` back to defaults; deliberately does NOT touch
+    `micPermissionGranted` (SPEC.md §2B: a returning student's prior
+    grant must carry over, never re-asked). Clearing `lastInputMode` here
+    (confirmed with Evelyn, not assumed) means a fresh Practice More
+    restart goes back to the plain `micPermissionGranted`-based default
+    rather than carrying over whichever mode the *previous* session ended
+    in.
   - **`exitConfirmOpen`** (`useRequestExit`/`useCancelExit`) — the one
     shared exit-intent flag; see the exit-confirmation-sheet bullet above
     for the full mechanism. `requestExit()` is what every screen's own
