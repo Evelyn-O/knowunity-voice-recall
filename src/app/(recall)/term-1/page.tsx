@@ -39,6 +39,11 @@ import { gentle, sheet, snappy } from "@/lib/motion";
 
 const PROMPT = "First one: in your own words, what's a note?";
 const ANSWER = "You got it! A note is a sound with a specific pitch.";
+// Authored, not sourced — no scripted voice transcript exists for this
+// term's (always-unaided-pass) outcome; Figma's own "What I heard:" box on
+// this screen (node 13900:25720) just contains a placeholder
+// ("[show here what the user said to the mic]"), not real copy.
+const WHAT_I_HEARD = "A note is a sound that has a specific pitch to it.";
 
 /** Max height (px) per bar — the base silhouette; live/replayed levels
  * (0..1) scale each bar down from this via `transform: scaleY`, never by
@@ -256,7 +261,9 @@ export default function TermOnePage() {
   useMascotBubble({
     pose:
       stage === "result"
-        ? "listening"
+        ? inputMode === "text"
+          ? "reading"
+          : "listening"
         : isTyping || isCheckingText
           ? "reading"
           : MASCOT_POSE[stage],
@@ -454,16 +461,18 @@ export default function TermOnePage() {
   if (stage === "result") {
     return (
       <div className="relative flex flex-1 flex-col px-4">
-        {/* Text mode's answer stays echoed via the same HighlightCard
-            pattern term-3's voice "What I heard." card uses — just with
-            the real typed text instead of a scripted transcript line
-            (Figma 13900:25786). Voice mode has no equivalent card here
-            (term-1's voice Result never showed one). */}
-        {inputMode === "text" && (
-          <div className="pt-5">
+        {/* Text mode echoes the real typed answer; voice mode now echoes
+            the scripted "What I heard" transcript (WHAT_I_HEARD) the same
+            way term-3's wrong-result screens already do, so the box shows
+            regardless of outcome/mode (Figma 13900:25720 — a correct/
+            "nailed" result with this box present). */}
+        <div className="pt-5">
+          {inputMode === "text" ? (
             <HighlightCard eyebrow="What you wrote:">{typedAnswer}</HighlightCard>
-          </div>
-        )}
+          ) : (
+            <HighlightCard eyebrow="What I heard:">{WHAT_I_HEARD}</HighlightCard>
+          )}
+        </div>
         {/* The dimmed prompt echo is the persistent MascotBubble in the
             shared layout (dimmed:true via useMascotBubble above) — only
             the new reply bubble is local to this screen. */}

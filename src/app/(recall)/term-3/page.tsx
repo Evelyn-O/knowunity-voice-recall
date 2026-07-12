@@ -67,6 +67,11 @@ const REVEAL_TEXT =
 // exercise it. Kept consistent with Reveal's own definition of tempo,
 // phrased as a short warm affirmation.
 const ANSWER = "Exactly! Tempo is the speed or pace of the music — how fast or slow it feels.";
+// Authored, not sourced — same gap as ANSWER above: this term's "correct"
+// case is unreached by the committed script, so no scripted transcript
+// exists for it (TRANSCRIPT_BY_ATTEMPT only covers the two wrong attempts).
+const WHAT_I_HEARD_CORRECT =
+  "Tempo is how fast or slow the music is played.";
 
 type Outcome = "wrong" | "correct";
 
@@ -322,7 +327,9 @@ export default function TermThreePage() {
       ? isTyping || isCheckingText
         ? "reading"
         : MASCOT_POSE[stage as MicStage]
-      : "listening",
+      : inputMode === "text"
+        ? "reading"
+        : "listening",
     alt: "Noe",
     text: isMicStage && promptVariant === "mishear" ? MISHEAR_PROMPT : PROMPT,
     dimmed: !isMicStage,
@@ -636,12 +643,14 @@ export default function TermThreePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={gentle}
           >
-            {/* Available in both voice and text mode (Figma node
-                14030:16666) — see disputeMishear's own comment. */}
-            <TextLinkButton onClick={disputeMishear} className="mx-auto block">
-              Did Knowie mishear you?
-            </TextLinkButton>
-            <div className="mt-5">
+            {/* Voice-only — mishearing is a voice/STT-specific failure mode,
+                so it can't apply to a typed answer. */}
+            {inputMode === "voice" && (
+              <TextLinkButton onClick={disputeMishear} className="mx-auto block">
+                Did Knowie mishear you?
+              </TextLinkButton>
+            )}
+            <div className={inputMode === "voice" ? "mt-5" : undefined}>
               <MascotBubble pose="giggling" alt="Noe, giggling" text={REVEAL_TEXT} />
             </div>
           </motion.div>
@@ -694,11 +703,13 @@ export default function TermThreePage() {
         <div className="relative flex flex-1 flex-col px-4">
           <div className="flex flex-col gap-5 pt-5">
             <HighlightCard eyebrow={transcriptEyebrow}>{transcriptFor(index)}</HighlightCard>
-            {/* Available in both voice and text mode (Figma node
-                14030:16666) — see disputeMishear's own comment. */}
-            <TextLinkButton onClick={disputeMishear} className="mx-auto block">
-              Did Knowie mishear you?
-            </TextLinkButton>
+            {/* Voice-only — mishearing is a voice/STT-specific failure mode,
+                so it can't apply to a typed answer. */}
+            {inputMode === "voice" && (
+              <TextLinkButton onClick={disputeMishear} className="mx-auto block">
+                Did Knowie mishear you?
+              </TextLinkButton>
+            )}
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -764,11 +775,13 @@ export default function TermThreePage() {
             dimmed question echo (persistent, via useMascotBubble above)
             and this new answer bubble, same as term-1's Result. The
             wrong/hint history isn't carried over into this view. */}
-        {inputMode === "text" && (
-          <div className="pt-5">
+        <div className="pt-5">
+          {inputMode === "text" ? (
             <HighlightCard eyebrow="What you wrote:">{typedAnswer}</HighlightCard>
-          </div>
-        )}
+          ) : (
+            <HighlightCard eyebrow="What I heard:">{WHAT_I_HEARD_CORRECT}</HighlightCard>
+          )}
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}

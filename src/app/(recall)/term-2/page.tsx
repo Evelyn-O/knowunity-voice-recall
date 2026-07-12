@@ -46,6 +46,14 @@ const HINT_1 = "Two numbers stacked on top of each other. What does the top one 
 // Knowie's established short/warm pattern, and answers the hint's own
 // question ("what does the top one tell you?") directly.
 const ANSWER = "Exactly! The top number tells you how many beats are in each measure.";
+// Authored, not sourced — no scripted voice transcript exists for either
+// attempt of this term (term-3's TRANSCRIPT_BY_ATTEMPT is the only term
+// that had one before this), indexed the same way TERM_2_OUTCOME_BY_ATTEMPT
+// is: [partial attempt, correct attempt].
+const WHAT_I_HEARD_BY_ATTEMPT = [
+  "Um, I think it's something about the beats in a measure?",
+  "It's the two numbers that tell you how many beats are in a measure and what note gets the beat.",
+];
 
 type Outcome = "partial" | "correct";
 
@@ -270,7 +278,9 @@ export default function TermTwoPage() {
   useMascotBubble({
     pose:
       stage === "result" || stage === "hint"
-        ? "listening"
+        ? inputMode === "text"
+          ? "reading"
+          : "listening"
         : isTyping || isCheckingText
           ? "reading"
           : MASCOT_POSE[stage],
@@ -540,15 +550,19 @@ export default function TermTwoPage() {
   if (stage === "result" && outcome === "partial") {
     return (
       <div className="relative flex flex-1 flex-col px-4">
-        {/* Text mode's answer stays echoed via the same HighlightCard
-            pattern term-3's voice "What I heard." card uses — the real
-            typed text instead of a scripted transcript line. Voice mode
-            has no equivalent card here. */}
-        {inputMode === "text" && (
-          <div className="pt-5">
+        {/* Text mode echoes the real typed answer; voice mode echoes the
+            scripted "What I heard" transcript (WHAT_I_HEARD_BY_ATTEMPT),
+            same pattern term-3's wrong-result screens use — shows
+            regardless of outcome/mode. */}
+        <div className="pt-5">
+          {inputMode === "text" ? (
             <HighlightCard eyebrow="What you wrote:">{typedAnswer}</HighlightCard>
-          </div>
-        )}
+          ) : (
+            <HighlightCard eyebrow="What I heard:">
+              {WHAT_I_HEARD_BY_ATTEMPT[Math.min(attempt, WHAT_I_HEARD_BY_ATTEMPT.length - 1)]}
+            </HighlightCard>
+          )}
+        </div>
         {/* The dimmed question echo is the persistent MascotBubble in the
             shared layout (dimmed:true via useMascotBubble above) — only
             this reply bubble is local to this screen. */}
@@ -614,11 +628,15 @@ export default function TermTwoPage() {
             dimmed question echo (persistent, via useMascotBubble above)
             and this new answer bubble, same as term-1's Result. The
             partial/hint history isn't carried over into this view. */}
-        {inputMode === "text" && (
-          <div className="pt-5">
+        <div className="pt-5">
+          {inputMode === "text" ? (
             <HighlightCard eyebrow="What you wrote:">{typedAnswer}</HighlightCard>
-          </div>
-        )}
+          ) : (
+            <HighlightCard eyebrow="What I heard:">
+              {WHAT_I_HEARD_BY_ATTEMPT[Math.min(attempt, WHAT_I_HEARD_BY_ATTEMPT.length - 1)]}
+            </HighlightCard>
+          )}
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}

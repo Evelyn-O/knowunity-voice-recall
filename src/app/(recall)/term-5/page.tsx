@@ -45,6 +45,11 @@ const PROMPT = "Last one for this set: what's Cadence?";
 // Cadence). Short/warm, matching the Term 1 pattern.
 const ANSWER =
   "Exactly! A cadence is the musical phrase that signals an ending or resting point.";
+// Authored, not sourced — same gap as ANSWER above: no scripted voice
+// transcript exists for this term's (always correct-on-first-attempt)
+// outcome.
+const WHAT_I_HEARD =
+  "A cadence is like the ending of a musical phrase, the way it resolves.";
 
 /** Max height (px) per bar — the base silhouette; live/replayed levels
  * (0..1) scale each bar down from this via `transform: scaleY`, never by
@@ -244,7 +249,9 @@ export default function TermFivePage() {
       : {
           pose:
             stage === "result"
-              ? "listening"
+              ? inputMode === "text"
+                ? "reading"
+                : "listening"
               : isTyping || isCheckingText
                 ? "reading"
                 : MASCOT_POSE[stage as MicStage],
@@ -511,11 +518,13 @@ export default function TermFivePage() {
   if (stage === "result") {
     return (
       <div className="relative flex flex-1 flex-col px-4">
-        {inputMode === "text" && (
-          <div className="pt-5">
+        <div className="pt-5">
+          {inputMode === "text" ? (
             <HighlightCard eyebrow="What you wrote:">{typedAnswer}</HighlightCard>
-          </div>
-        )}
+          ) : (
+            <HighlightCard eyebrow="What I heard:">{WHAT_I_HEARD}</HighlightCard>
+          )}
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}

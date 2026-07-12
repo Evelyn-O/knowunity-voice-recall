@@ -48,6 +48,12 @@ const PROMPT = "We are very close! What's syncopation?";
 // inventing a hint/wrong ladder nothing asked for.
 const ANSWER =
   "Exactly! Syncopation is accenting a beat you don't expect, throwing off the regular rhythm.";
+// Authored, not sourced — same reasoning as ANSWER above: this term's
+// script never actually reaches a voice result (its demo path is skip),
+// so no scripted transcript exists to reuse. Only renders if a tester
+// answers by voice instead of skipping.
+const WHAT_I_HEARD =
+  "Syncopation is when the beat lands somewhere you don't expect it to.";
 
 /** Max height (px) per bar — the base silhouette; live/replayed levels
  * (0..1) scale each bar down from this via `transform: scaleY`, never by
@@ -258,7 +264,9 @@ export default function TermFourPage() {
   useMascotBubble({
     pose:
       stage === "result"
-        ? "listening"
+        ? inputMode === "text"
+          ? "reading"
+          : "listening"
         : isTyping || isCheckingText
           ? "reading"
           : MASCOT_POSE[stage],
@@ -459,11 +467,13 @@ export default function TermFourPage() {
   if (stage === "result") {
     return (
       <div className="relative flex flex-1 flex-col px-4">
-        {inputMode === "text" && (
-          <div className="pt-5">
+        <div className="pt-5">
+          {inputMode === "text" ? (
             <HighlightCard eyebrow="What you wrote:">{typedAnswer}</HighlightCard>
-          </div>
-        )}
+          ) : (
+            <HighlightCard eyebrow="What I heard:">{WHAT_I_HEARD}</HighlightCard>
+          )}
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
