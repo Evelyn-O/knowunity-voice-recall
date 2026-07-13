@@ -669,14 +669,37 @@ unaffected by the group — `/`, `/confidence`, `/confidence-recurring`, etc.):
   - **Title copy**: "What you wrote"/"What I heard"/"Picture this" all
     now end in a colon, not a period, everywhere they appear (5 terms +
     `text-fallback-body.tsx`).
-- **"Did Knowie mishear you?" now available in text mode, not just
-  voice.** Previously gated behind `inputMode === "voice"` at both its
-  occurrences (term-3's wrong-result sheet and Reveal screen) under the
-  reasoning "nothing was heard if typed" — per Figma node `14030:16666`
-  (which shows the link present even when the box reads "What you
-  wrote:") and explicit instruction, that gate is removed; the
-  underlying `disputeMishear()` handler needed no changes since it never
-  touched `inputMode` to begin with.
+- **"Did Knowie mishear you?" — reverted back to voice-only.** Briefly
+  made available in text mode too (see git history), then reversed:
+  mishearing is a voice/STT-specific failure mode that can't happen for
+  a typed answer, so both occurrences (term-3's wrong-result sheet and
+  Reveal screen) are gated behind `inputMode === "voice"` again. This is
+  the current, correct state — don't remove the gate again without
+  checking with Evelyn first, this has flipped once already.
+- **"What I heard:" now shows on every voice-mode result, regardless of
+  outcome — not just wrong answers.** Previously only term-3's
+  wrong-result/Reveal screens had any transcript box in voice mode; a
+  correct or partial voice answer showed nothing (unlike text mode's
+  "What you wrote:", which always showed the real typed input). Since
+  there's no real STT in this prototype (hard constraint), extending
+  this required *authoring* new mocked "what the student said" lines,
+  not just a visibility toggle — flagged back before building, per
+  Evelyn's direction to follow the same script-driven pattern term-3's
+  existing transcripts already use. New per-term constants, same
+  "authored, not sourced" convention as elsewhere in this doc:
+  `WHAT_I_HEARD` (term-1/4/5, single unaided-pass outcome),
+  `WHAT_I_HEARD_BY_ATTEMPT` (term-2, indexed [partial, correct]),
+  `WHAT_I_HEARD_CORRECT` (term-3's "correct" Outcome case — still
+  unreached by the shipped script, kept real/wired same as `ANSWER`
+  already was). Verified via the temporarily-force-then-revert pattern
+  documented below for term-3's own unreachable "correct" path.
+- **Term-3 Reveal screen: spacing between the transcript card and the
+  reply bubble is conditional on mode.** The wrapping div around the
+  reply `MascotBubble` only gets `mt-5` when `inputMode === "voice"`
+  (i.e. when the "Did Knowie mishear you?" link is rendered above it) —
+  in text mode, where that link is absent, the parent's own `gap-5`
+  already supplies the correct 20px, so the extra `mt-5` would double it
+  to 40px. Don't hardcode `mt-5` back onto that div unconditionally.
 - **Modality (voice/text) now persists across terms and retries — no
   more silently resetting to the mic-permission default.** Previously,
   every term computed its own starting `inputMode` purely from
@@ -712,12 +735,13 @@ unaffected by the group — `/`, `/confidence`, `/confidence-recurring`, etc.):
   aloud. Scoped narrowly to the Checking stage specifically
   (`stage === "checking" && inputMode === "text"`); voice mode's own
   Checking (and its separate big-mic-button mascot) is completely
-  unchanged, and the Result/Hint/Reveal screens' dimmed top-bubble pose
-  still shows "listening" regardless of mode — a deliberate scope
-  decision (those screens use materially different per-term ternary
-  structures, and the request was read as describing the active "using
-  text fallback" moment, not every downstream screen) flagged back to
-  Evelyn rather than silently expanded.
+  unchanged. **Superseded by a later pass:** the Result/Hint/Reveal
+  screens' dimmed top-bubble pose was originally left showing
+  "listening" regardless of mode as a deliberate scope decision — a
+  follow-up request explicitly extended the same `inputMode === "text"
+  ? "reading" : "listening"` swap to every Result/Hint/Reveal screen
+  across all 5 terms, so that scope line no longer holds. See "What I
+  heard now shows on every voice result, regardless of outcome" below.
 
 Shared infrastructure (all under `src/`):
 - `app/(recall)/layout.tsx` + `lib/recall-flow-context.tsx` — the
@@ -1244,3 +1268,27 @@ From the spec's "Constraints — do NOT build" section:
   the *actual* element's `getBoundingClientRect()` — if it's positioned
   correctly, the badge is just a dev-only rendering artifact, not
   something to fix.
+- **The dev server can silently die between turns/sessions — don't
+  assume `preview_start` will just reuse it.** A `navigate` call failing
+  with "denied or failed" on `localhost:3000` was the process having
+  stopped, not a real navigation error. Confirm with `lsof -nP -iTCP:3000
+  -sTCP:LISTEN` (or check `preview_list`'s tabs vs its process list —
+  they can disagree) before debugging app code; if it's down, `rm -rf
+  .next` isn't needed, just `preview_start` with the `dev` config again.
+- **`read_page` with `filter: "interactive"` can miss elements that
+  appear immediately after the triggering click** — e.g. the mocked
+  mic-permission dialog's Allow/Don't Allow buttons were invisible to an
+  interactive-filtered read taken right after clicking "Let's go!", even
+  though the dialog was genuinely in the DOM (confirmed via a screenshot
+  and `filter: "all"`). If expected buttons don't show up right after a
+  click, re-read with `filter: "all"` or take a screenshot before
+  concluding the click didn't register.
+- **This repo deploys via Vercel's GitHub integration — pushing to
+  `main` alone triggers a production deploy, no separate deploy step
+  needed.** No local `.vercel/project.json` exists; look up the team/
+  project via the Vercel MCP tools' `list_teams` → `list_projects`
+  (team `egorgds`, project `knowunity-voice-recall`) if you need the IDs
+  for `get_deployment`/`list_deployments`. Run `npm run build` locally
+  before pushing — `next build`'s `tsc` pass catches errors `next dev`
+  (Turbopack) doesn't (see the build-breaking-type-error commit already
+  in this repo's history).
