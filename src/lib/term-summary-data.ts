@@ -136,13 +136,19 @@ export function getTermSummaryCaption(
  * node 14050:23574, body node 14050:23575). Chosen by crossing the
  * session's confidence-tap bucket against a single outcome bucket derived
  * from EVERY attempted term's own real outcome — not a numeric/percentage
- * score. "Right" only if every attempted term was unaided; otherwise the
- * worst category present wins (revealed/skipped beats hinted beats
- * unaided) — same worst-case-wins pattern already used elsewhere in this
- * app for term-5's own trigger rule (see recall-flow-context.tsx), not a
- * new kind of collapsing invented for this screen. Skipped is folded into
- * "revealed" per this task's own instruction — a term the student never
- * attempted counts as a miss the same way a fully-revealed one does.
+ * score.
+ *
+ * "Right" tolerates some misses rather than requiring a perfect session —
+ * a pure worst-case-wins rule (any single revealed/skipped term drags the
+ * whole header down) read as too punishing: 3 clean terms and 1 skip used
+ * to show the same "Revealed" copy as a genuinely rough session. See
+ * summaryOutcomeBucket below for the exact two-path rule (confirmed with
+ * Evelyn, not inferred). Everything that doesn't clear "Right" still
+ * falls back to the original worst-case-wins split between "hinted" and
+ * "revealed". Skipped is folded into "revealed" per that original
+ * instruction — a term the student never attempted counts as a miss the
+ * same way a fully-revealed one does, unless it's outweighed by enough
+ * unaided terms to clear "Right" first.
  *
  * The "with a hint" row is Claude-drafted to match the tone of Evelyn's
  * confirmed originals, not confirmed copy — flag for her review before
@@ -200,17 +206,45 @@ export const SUMMARY_HEADER_COPY: Record<
   },
 };
 
-/** Worst-case-wins across every attempted term this session — "right" only
- * if none needed help at all. Only meaningful when termOutcomes is
- * non-empty (guaranteed on /recall-summary, which is only reached when
- * recallAttempted). */
+/**
+ * "Right" if either path clears, first match wins:
+ *  - >=2 unaided terms, no matter what happened to the rest (any mix of
+ *    hinted/revealed/skipped, any count) — also covers a fully clean
+ *    session, since this app's base term count is always >=4. **Except**
+ *    the barely-2 edge case: exactly 2 unaided with every remaining term
+ *    skipped (zero hinted, zero revealed — no engagement at all on the
+ *    rest) doesn't qualify. That reads weaker than 3+ unaided, or a
+ *    2-unaided session where the rest shows some real effort (a hint, or
+ *    a genuine miss via reveal) — it falls through to the normal
+ *    "revealed" (actionable) copy below instead.
+ *  - >=1 unaided AND >=2 hinted AND zero skipped — a weaker path for a
+ *    session that leaned on hints twice but still landed one term clean
+ *    and never outright skipped anything (a revealed term is still
+ *    tolerated here — skip is the only disqualifier, confirmed with
+ *    Evelyn rather than assumed).
+ * Anything that clears neither path falls back to the original
+ * worst-case-wins split: "hinted" only if there's a hinted term and zero
+ * revealed/skipped; "revealed" (the actionable/review copy) otherwise.
+ * Only meaningful when termOutcomes is non-empty (guaranteed on
+ * /recall-summary, which is only reached when recallAttempted).
+ */
 function summaryOutcomeBucket(
   termOutcomes: Partial<Record<TermId, TermOutcome>>
 ): SummaryOutcomeBucket {
   const outcomes = Object.values(termOutcomes);
+  const unaidedCount = outcomes.filter((o) => o === "unaided").length;
+  const hintedCount = outcomes.filter((o) => o === "hinted").length;
+  const skippedCount = outcomes.filter((o) => o === "skipped").length;
+  const restCount = outcomes.length - unaidedCount;
+
+  const barelyTwoAllSkipped =
+    unaidedCount === 2 && restCount > 0 && skippedCount === restCount;
+  const solidMajority = unaidedCount >= 2 && !barelyTwoAllSkipped;
+  const oneCleanTwoHints = unaidedCount >= 1 && hintedCount >= 2 && skippedCount === 0;
+  if (solidMajority || oneCleanTwoHints) return "right";
+
   if (outcomes.some((o) => o === "revealed" || o === "skipped")) return "revealed";
-  if (outcomes.some((o) => o === "hinted")) return "hinted";
-  return "right";
+  return "hinted";
 }
 
 export function getSummaryHeaderCopy(
