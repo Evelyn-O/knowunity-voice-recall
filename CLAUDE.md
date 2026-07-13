@@ -1124,6 +1124,92 @@ unaffected by the group — `/`, `/confidence`, `/confidence-recurring`, etc.):
     you wrote" recap card (currently static while the reply bubble and
     sheet around it animate). Both remain open findings if revisited
     later — flagged here so they aren't rediscovered as new bugs.
+- **`/summary`'s XP/RECALL count-up and reward confetti now sync to the
+  actual stat-tile landing, not a generic timer.** `CountUpNumber`
+  previously started its 0.9s count the instant it mounted, while its
+  tile was still `opacity:0` behind `STAT_TILE_VARIANTS`' staggered
+  reveal — most of the "climbs from zero" motion played invisibly before
+  the tile ever appeared. Confetti fired off a bare `revealed` timeout
+  that overlapped the whole stagger instead of landing on any real
+  moment. Both now key off the XP tile's own landing: new
+  `tileRevealDelay(index)` (mirrors the stagger's
+  `delayChildren`/`staggerChildren` timing) is passed as `CountUpNumber`'s
+  `delay` on the XP and RECALL tiles, and a new `xpTileLanded` state
+  (set via `onAnimationComplete` on the XP tile's own `motion.div`, both
+  variants) now drives `ConfettiBurst`'s `play` prop — same "confetti
+  follows a real landing moment" pattern `/streak`'s flame icon already
+  used, instead of an independently-timed effect competing with the
+  stagger for attention.
+  - **A real bug surfaced while wiring this, not just a timing tweak:**
+    Motion calls `onAnimationComplete` for the *initial* "hidden→hidden"
+    state too, since `animate={revealed ? "visible" : "hidden"}` starts
+    equal to `initial="hidden"` before `revealed` flips true — a
+    technically-completed no-op animation the callback doesn't
+    distinguish from a real one. The first version of this fix burst
+    confetti ~90ms after mount, well before any tile had appeared.
+    Guarded with `if (definition === "visible") setXpTileLanded(true)`
+    on both the full and simplified variant's XP tile — `definition` is
+    the variant label Motion's callback receives, and checking it is
+    what actually fixes this, not a delay/timeout workaround. Confirmed
+    live (not just by reading the code) via the trigger+poll-in-one-script
+    technique the "Good to know" section already prescribes for
+    route-mount animations: navigated `/streak` → `/summary` inside one
+    `javascript_tool` call, sampling `getComputedStyle(tile).opacity` and
+    confetti-piece count every ~40ms. Before the guard, confetti was
+    already at full count by t≈90ms while every tile was still at
+    opacity 0; after the guard, confetti onset now lines up with the XP
+    tile crossing opacity 1 (~590–835ms depending on variant/tile index).
+- **Pre-ship critique against 5 lenses (system status, token consistency,
+  copy, can't-speak-fallback reachability, native feel), 4 fixes applied
+  from it.** Walked every screen in the loop — full source read, not
+  spot-checked — and cross-referenced `feedback.md`'s own (still-unchecked)
+  testing items against what's actually shipped, surfacing several
+  findings not yet acted on (the "Why?" explanation feature's blocked
+  sign-off gate in `feedback.md`, "Try weak terms" not actually filtering
+  to weak terms, the duplicated raw `rgba(0,0,0,0.15)` button-bevel
+  shadow, two different modal-scrim treatments, term-3's Tempo hint
+  referencing "a note" — matches `feedback.md`'s own unresolved S-tier
+  item almost verbatim — among others). Only four items were actioned
+  this pass, on explicit instruction; the rest are intentionally left
+  open rather than silently fixed or silently dropped:
+  - **Confidence-tap prompt copy fixed** (`confidence/page.tsx`,
+    `confidence-recurring/page.tsx`) — was a three-clause comma splice
+    ("We're about to test what you've learned in your own words, before
+    we get started, how confident do you feel?"), now two sentences
+    ("We're about to test what you've learned, in your own words. Before
+    we get started — how confident do you feel?").
+  - **"Try to go to quiet place" → "Try to find a quiet place"** — the
+    missing-article typo was duplicated identically (not shared) across
+    all five term idle screens' helper caption; fixed in each file.
+  - **Reskin-target naming reversed back to "Knowie," not "Noe,"
+    across this file, design.md, and sprint-context.md — the docs were
+    wrong, not the app.** The shipped prototype already used "Knowie" in
+    its own real copy ("Say it back to knowie" on `/entry`, "Did Knowie
+    mishear you?" on `/term-3`) and every mascot asset has always been
+    named `knowie-*.svg` (see the image inventory below) — the docs'
+    "target reskin is Noe, not Knowie" framing was the thing out of sync
+    with reality, confirmed and corrected rather than renaming the app's
+    copy/assets to match a doc that was itself stale. This section's own
+    "Reskin target matters" bullet, the "Project"/"test prototype" bullets
+    above, and the image-inventory line all now read "Knowie" — if you
+    still see "Noe" anywhere in this file, it's a miss, not intentional.
+  - **The can't-speak-label rule below (under "Always") corrected to
+    match the shipped app, not the other way around.** It previously
+    still described "I
+    can't speak right now" as the permanent, non-swappable copy and
+    warned against ever using "Type instead" in that spot — but
+    `MicLoopBottomBar` has read "Type instead"/"Try with voice"
+    everywhere, mode-driven, since a `feedback.md`-tested fix (2/5
+    testers were confused whether "I can't speak right now" meant an
+    action or a state). The old rule would have told a future session to
+    revert a validated, tester-driven fix. See that bullet for the
+    current rule.
+  - All four fixes were built locally (`tsc --noEmit` clean, `npm run
+    build` clean), committed as two commits, and pushed to `main`, which
+    triggered a Vercel production deploy via the GitHub integration (no
+    separate deploy step) — confirmed `READY` via the Vercel MCP tools
+    and spot-checked the live confidence-tap copy on the production URL
+    afterward, not just assumed from a green push.
 
 Shared infrastructure (all under `src/`):
 - `lib/recall-flow-context.tsx` also exports **`getEntryForkRoute(termOutcomes)`**
@@ -1807,3 +1893,20 @@ From the spec's "Constraints — do NOT build" section:
   asking the user whether to kill the other session's process; the
   alternative is a git worktree, but `EnterWorktree` is explicitly gated
   to only fire when the user or CLAUDE.md asks for one.
+- **Motion's `onAnimationComplete` fires for a no-op "initial state"
+  transition too, not just a real one — a genuine trap when `animate` is
+  gated behind a boolean that starts `false`.** A pattern like
+  `initial="hidden" animate={revealed ? "visible" : "hidden"}` (the
+  `/summary` stat-tile stagger, and similar elsewhere) means `animate`
+  equals `initial` on first render, before `revealed` ever flips true —
+  Motion still invokes `onAnimationComplete` for that non-transition
+  almost immediately (~90ms after mount, i.e. next tick, not truly 0),
+  which reads exactly like a real animation completing if you're using
+  the callback to trigger something (confetti, a sound, a state flip).
+  Confirmed by sampling `getComputedStyle(el).opacity` and a rendered
+  effect (confetti-piece count) across `~40ms` polling steps inside one
+  `javascript_tool` call, per the trigger+poll-in-one-script technique
+  above — the effect fired while every tile was still at `opacity: 0`.
+  Fix: check the `definition` argument `onAnimationComplete` receives
+  (the variant label that just finished, e.g. `"visible"`) and only act
+  when it's the transition you actually mean, not any completion.
