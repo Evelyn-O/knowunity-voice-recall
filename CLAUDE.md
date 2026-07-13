@@ -1027,6 +1027,41 @@ unaffected by the group — `/`, `/confidence`, `/confidence-recurring`, etc.):
   the shipped demo, same situation as other documented gaps in this file.
   The two "with a hint" copy blocks are Claude-drafted, flagged
   unconfirmed pending Evelyn's review.
+  - **Superseded by a later pass: the "right" bucket is no longer pure
+    worst-case-wins.** Evelyn flagged that a single skipped/revealed term
+    was dragging the whole header down to the "revealed" copy even after
+    3 clean terms — too punishing given the north star ("costs nothing to
+    get wrong"). `summaryOutcomeBucket()` (`lib/term-summary-data.ts`) now
+    tolerates some misses via two paths into "right", confirmed with
+    Evelyn across several rounds of back-and-forth on the exact boundary,
+    not guessed:
+    - `>=2` unaided qualifies as "right" regardless of what the rest did
+      (any mix of hinted/revealed/skipped, any count) — **except** the
+      barely-2 edge case: exactly 2 unaided with *every* remaining term
+      skipped (zero hinted, zero revealed — no engagement shown on the
+      rest at all) still falls through to "revealed", since that reads
+      weaker than either 3+ unaided or a 2-unaided session where the rest
+      shows some real effort. Explicitly confirmed this boundary stays
+      exactly here — 3+ unaided with the rest all skipped stays "right",
+      and 2 unaided + 1 revealed + 1 skipped (not *literally* all
+      skipped) also stays "right" — both checked with Evelyn directly
+      rather than assumed from the pattern.
+    - `>=1` unaided AND `>=2` hinted AND zero skipped also qualifies as
+      "right" — a weaker path for a session that leaned on hints twice
+      but still landed one term clean and never outright skipped
+      anything. A revealed term is still tolerated on this path too
+      (only skip disqualifies it) — confirmed directly, not inferred from
+      the first path's own tolerance.
+    - Anything clearing neither path still falls back to the original
+      worst-case-wins split for "hinted" vs "revealed" (unchanged): only
+      "hinted" if there's a hinted term and zero revealed/skipped, else
+      "revealed".
+    This also means the reachability claim above (only "revealed" is hit
+    via a full click-through, given the fixed demo script) no longer
+    holds in general — a click-through that answers term-1/4/(5) for real
+    and *skips* term-2/3 instead of letting their scripted hint/reveal
+    ladders run now reaches "right" too, verified live this way (2
+    unaided + 3 skipped → "You knew you had this").
 - **Motion bounce bugs fixed — two separate, unrelated root causes.**
   (1) The mascot-bubble's outer `AnimatePresence` in
   `(recall)/layout.tsx` was the one instance in the app missing
