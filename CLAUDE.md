@@ -1414,3 +1414,31 @@ From the spec's "Constraints — do NOT build" section:
   before pushing — `next build`'s `tsc` pass catches errors `next dev`
   (Turbopack) doesn't (see the build-breaking-type-error commit already
   in this repo's history).
+- **Figma dev-mode asset URLs (from `get_design_context`, e.g.
+  `http://localhost:3845/assets/<hash>.svg`) are directly fetchable via
+  `curl` while the Figma desktop app is open.** This gets you the real
+  source recipe instead of reverse-engineering one from a screenshot —
+  used to fix the entry screen's mascot glow, which turned out to be an
+  actual radial-gradient (exact stops/colors pulled from the fetched
+  SVG), not a blurred flat circle as the code had assumed.
+- **`git stash` is the wrong tool for "does this bug predate my
+  changes" checks — it reverts your own uncommitted work along with
+  everything else.** Nearly lost a full session's edits running `git
+  stash && npm run build` to test against the pre-change code; recovered
+  with an immediate `git stash pop`, but reasoning from `git diff`/`git
+  show`, or just checking which files your current changes actually
+  touch, answers the same question without needing an undo step at all.
+- **The Browser pane's `computer` tool and `read_page` don't share a
+  coordinate space.** `read_page` reports the viewport in CSS px (e.g.
+  390x844), but `computer` screenshots/clicks operate at ~2x that
+  (physical px) — a coordinate hand-calculated from a screenshot lands
+  in the wrong place. Always click via a `ref_N` from `read_page`, never
+  a coordinate guessed from screenshot pixels.
+- **`read_page` can return multiple stale, overlapping ref sets during
+  an animated route/state transition — clicking one can silently hit
+  whatever now occupies that DOM position, not the element you meant**
+  (e.g. a stale "Dislike" ref resolving to "Continue" after the sheet
+  re-rendered, firing an unintended navigation). Re-read with
+  `filter: "all"` immediately before each click rather than reusing
+  refs from an earlier read, especially right after a click that
+  changes stage/route.
