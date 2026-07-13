@@ -141,6 +141,28 @@ body {
   animation: mascot-glow 3s ease-in-out infinite alternate;
 }
 
+/* Entry-screen mascot background glow (Figma node 14027:16007,
+   "Background blur") — reproduces Figma's own baked gradient recipe
+   exactly (fetched from the Figma source asset: a radial gradient,
+   brand-bold at 40% opacity from center to ~33.6% of its radius, fading
+   to fully transparent by ~73%), rather than a CSS `filter: blur()` on a
+   flat-color circle. A blur filter visually bleeds far beyond its own
+   box (a 64px std-dev blur spreads roughly 150-190px), and this screen's
+   scrollable ancestor (non-visible overflow) clips that bleed at a hard,
+   visible edge — the "boxed" artifact this replaces. A gradient fades to
+   fully transparent well inside its own box, so it never needs to bleed
+   past its bounds and blends seamlessly into the page background behind
+   it with no clip. Derived from --color-brand-bold via color-mix rather
+   than a new hex literal. */
+.mascot-radial-glow {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-brand-bold) 40%, transparent) 0%,
+    color-mix(in srgb, var(--color-brand-bold) 40%, transparent) 33.5847%,
+    transparent 73.0769%
+  );
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mascot-bob,
   .mascot-drift,

@@ -11,14 +11,14 @@ import { MicLoopBottomBar } from "@/components/mic-loop-bottom-bar";
 import { TextFallbackBody } from "@/components/text-fallback-body";
 import { SkipConfirmSheet } from "@/components/skip-confirm-sheet";
 import { IosPermissionDialog } from "@/components/ios-permission-dialog";
+import { ReactionButtons } from "@/components/reaction-buttons";
+import { WhyExplanation } from "@/components/why-explanation";
 import {
   LoadingSpinnerIcon,
   MicIcon,
   PauseIcon,
   PlayIcon,
   SendIcon,
-  ThumbsDownIcon,
-  ThumbsUpIcon,
   TrashIcon,
 } from "@/components/icons";
 import {
@@ -54,6 +54,11 @@ const ANSWER =
 // answers by voice instead of skipping.
 const WHAT_I_HEARD =
   "Syncopation is when the beat lands somewhere you don't expect it to.";
+// Sourced from Evelyn directly for this term's "Why?" explanation box —
+// not a Figma-mockup placeholder like term-1/term-3's, but the same
+// "correct" (green) variant treatment.
+const WHY_EXPLANATION =
+  "By shifting the accent to weak beats or the spaces between beats, it creates an instant moment of musical tension and surprise.";
 
 /** Max height (px) per bar — the base silhouette; live/replayed levels
  * (0..1) scale each bar down from this via `transform: scaleY`, never by
@@ -221,6 +226,7 @@ export default function TermFourPage() {
   const [micBlocked, setMicBlocked] = useState(false);
   const [hasCapturedFrames, setHasCapturedFrames] = useState(false);
   const [skipConfirmOpen, setSkipConfirmOpen] = useState(false);
+  const [whyRevealed, setWhyRevealed] = useState(false);
   const micPermissionGranted = useMicPermissionGranted();
   const setMicPermissionGranted = useSetMicPermissionGranted();
   const [micPermissionPromptOpen, setMicPermissionPromptOpen] = useState(false);
@@ -495,33 +501,49 @@ export default function TermFourPage() {
             <p className="flex-1 font-display text-[26px] font-black text-feedback-success-on-subtle">
               Exactly right
             </p>
-            <button aria-label="Dislike this reply">
-              <ThumbsDownIcon className="h-6 w-6 text-text-primary" />
-            </button>
-            <button aria-label="Like this reply">
-              <ThumbsUpIcon className="h-6 w-6 text-text-primary" />
-            </button>
+            <ReactionButtons />
           </div>
+          {whyRevealed && (
+            <div className="px-4 pb-2">
+              <WhyExplanation variant="correct">{WHY_EXPLANATION}</WhyExplanation>
+            </div>
+          )}
           <BottomCta className="flex gap-1">
-            <motion.button
-              whileTap={{ scale: 0.94 }}
-              transition={snappy}
-              className="relative flex h-[58px] items-center justify-center rounded-full bg-interactive-secondary px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
-            >
-              <span className="font-display text-[18px] font-semibold text-interactive-on-secondary">
-                Why?
-              </span>
-            </motion.button>
-            <motion.button
-              whileTap={{ scale: 0.94 }}
-              transition={snappy}
-              onClick={handleContinue}
-              className="relative flex h-[58px] flex-1 items-center justify-center rounded-full bg-green-bold px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
-            >
-              <span className="font-display text-[18px] font-semibold text-green-on-bold">
-                Continue
-              </span>
-            </motion.button>
+            {whyRevealed ? (
+              <motion.button
+                whileTap={{ scale: 0.94 }}
+                transition={snappy}
+                onClick={handleContinue}
+                className="relative flex h-[58px] w-full items-center justify-center rounded-full bg-green-bold px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
+              >
+                <span className="font-display text-[18px] font-semibold text-green-on-bold">
+                  Got it - Continue
+                </span>
+              </motion.button>
+            ) : (
+              <>
+                <motion.button
+                  whileTap={{ scale: 0.94 }}
+                  transition={snappy}
+                  onClick={() => setWhyRevealed(true)}
+                  className="relative flex h-[58px] items-center justify-center rounded-full bg-interactive-secondary px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
+                >
+                  <span className="font-display text-[18px] font-semibold text-interactive-on-secondary">
+                    Why?
+                  </span>
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.94 }}
+                  transition={snappy}
+                  onClick={handleContinue}
+                  className="relative flex h-[58px] flex-1 items-center justify-center rounded-full bg-green-bold px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
+                >
+                  <span className="font-display text-[18px] font-semibold text-green-on-bold">
+                    Continue
+                  </span>
+                </motion.button>
+              </>
+            )}
           </BottomCta>
         </motion.div>
       </div>

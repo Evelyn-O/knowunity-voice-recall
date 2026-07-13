@@ -9,8 +9,8 @@ import { CountUpNumber } from "@/components/count-up-number";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import {
   useMascotBubble,
+  useRecallAttempted,
   useRecallStep,
-  useTermOutcomes,
 } from "@/lib/recall-flow-context";
 import { gentle, snappy } from "@/lib/motion";
 
@@ -24,16 +24,18 @@ import { gentle, snappy } from "@/lib/motion";
  * example Figma shows — this app doesn't track a real streak, consistent
  * with "mock the recall intelligence" for every other scripted value.
  *
- * Continue branches on whether the recall step was ever engaged this
- * session at all — real attempt (voice or text) submitted, or a term
- * explicitly skipped — via `termOutcomes` being non-empty (populated by
- * either an outcome confirmed via Continue, an explicit skip, or a term's
- * exit-button backfill; see recall-flow-context.tsx). Never engaged (Path
- * A "Maybe later", or X with zero interaction) skips straight to the
- * simplified `/summary`; any real engagement detours through the per-term
- * `/recall-summary` first. `/summary` itself re-derives which variant
- * it's showing from the same session context, so this page doesn't need
- * to pass a query param through.
+ * Continue branches on whether the student actually ATTEMPTED at least one
+ * term this session (a real voice or text submission — `recallAttempted`,
+ * set imperatively at send-time; see recall-flow-context.tsx), not on
+ * whether `termOutcomes` merely has entries. A session that only ever used
+ * the explicit Skip button (never submitted a real answer) still populates
+ * `termOutcomes` with "skipped" for every term, but that's not the student
+ * "doing voice active recall" — it correctly skips straight to the
+ * simplified `/summary`, same as "Maybe later" or X with zero interaction.
+ * Only a session with a real attempt detours through the per-term
+ * `/recall-summary` first. `/summary` itself re-derives which variant it's
+ * showing from the same session context, so this page doesn't need to pass
+ * a query param through.
  */
 const DAY_LABELS = ["Mo", "Tu", "We", "Th", "Fr"];
 const FILLED_DAYS = 3;
@@ -45,7 +47,7 @@ const dayVariants = {
 
 export default function StreakPage() {
   const router = useRouter();
-  const termOutcomes = useTermOutcomes();
+  const recallAttempted = useRecallAttempted();
   const [revealed, setRevealed] = useState(false);
 
   const onExit = useCallback(() => router.back(), [router]);
@@ -59,8 +61,7 @@ export default function StreakPage() {
   }, []);
 
   function handleContinue() {
-    const recallEngaged = Object.keys(termOutcomes).length > 0;
-    router.push(recallEngaged ? "/recall-summary" : "/summary");
+    router.push(recallAttempted ? "/recall-summary" : "/summary");
   }
 
   return (

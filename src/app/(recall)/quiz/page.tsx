@@ -41,8 +41,10 @@ type Stage = "idle" | "review";
  * progress, unrelated to the recall flow's 1-6). X opens a local
  * "pre-step" ExitConfirmSheet (Figma node 14033:4400) rather than the
  * shared layout-level exitConfirmOpen every VR screen's X uses — "Leave"
- * here goes to /path, not /streak, so it's local boolean-overlay state,
- * same pattern SkipConfirmSheet already establishes elsewhere.
+ * here goes to `/` (the exam-plan path view, now the app's root — see
+ * (recall)/page.tsx's own doc comment), not /streak, so it's local
+ * boolean-overlay state, same pattern SkipConfirmSheet already
+ * establishes elsewhere.
  */
 export default function QuizPage() {
   const router = useRouter();
@@ -179,7 +181,7 @@ export default function QuizPage() {
           open={exitConfirmOpen}
           variant="pre-step"
           onKeepLearning={() => setExitConfirmOpen(false)}
-          onLeave={() => router.push("/path")}
+          onLeave={() => router.push("/")}
         />
       </div>
     );
@@ -223,7 +225,7 @@ export default function QuizPage() {
         open={exitConfirmOpen}
         variant="pre-step"
         onKeepLearning={() => setExitConfirmOpen(false)}
-        onLeave={() => router.push("/path")}
+        onLeave={() => router.push("/")}
       />
     </div>
   );

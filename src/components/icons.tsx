@@ -94,17 +94,27 @@ export function SendIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-export function ThumbsUpIcon(props: SVGProps<SVGSVGElement>) {
+/** `filled` swaps the icon from outline-only (fill:none) to a solid bold
+ * fill — the "selected" reaction state (Figma node 14036:14586's Like
+ * icon shows this filled treatment). Defaults to outline, unchanged for
+ * every existing caller that doesn't pass it. */
+export function ThumbsUpIcon({
+  filled,
+  ...props
+}: SVGProps<SVGSVGElement> & { filled?: boolean }) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ fill: filled ? "currentColor" : "none", ...props })}>
       <path d="M7 10v10H4V10h3zm0 0 4-7a2 2 0 0 1 2 2v4h5a2 2 0 0 1 2 2l-1.5 7a2 2 0 0 1-2 1.5H7" />
     </svg>
   );
 }
 
-export function ThumbsDownIcon(props: SVGProps<SVGSVGElement>) {
+export function ThumbsDownIcon({
+  filled,
+  ...props
+}: SVGProps<SVGSVGElement> & { filled?: boolean }) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ fill: filled ? "currentColor" : "none", ...props })}>
       <path d="M17 14V4h3v10h-3zm0 0-4 7a2 2 0 0 1-2-2v-4H6a2 2 0 0 1-2-2l1.5-7A2 2 0 0 1 7.5 4H17" />
     </svg>
   );

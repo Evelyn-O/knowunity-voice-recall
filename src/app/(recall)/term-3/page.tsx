@@ -12,14 +12,14 @@ import { MicLoopBottomBar } from "@/components/mic-loop-bottom-bar";
 import { TextFallbackBody } from "@/components/text-fallback-body";
 import { SkipConfirmSheet } from "@/components/skip-confirm-sheet";
 import { IosPermissionDialog } from "@/components/ios-permission-dialog";
+import { ReactionButtons } from "@/components/reaction-buttons";
+import { WhyExplanation } from "@/components/why-explanation";
 import {
   LoadingSpinnerIcon,
   MicIcon,
   PauseIcon,
   PlayIcon,
   SendIcon,
-  ThumbsDownIcon,
-  ThumbsUpIcon,
   TrashIcon,
 } from "@/components/icons";
 import {
@@ -72,6 +72,15 @@ const ANSWER = "Exactly! Tempo is the speed or pace of the music — how fast or
 // exists for it (TRANSCRIPT_BY_ATTEMPT only covers the two wrong attempts).
 const WHAT_I_HEARD_CORRECT =
   "Tempo is how fast or slow the music is played.";
+// Sourced from Figma's own worked example for the reveal sheet's "Why?"
+// explanation box (node 14036:14642) — Evelyn flagged this exact copy as
+// placeholder/stand-in content, not final, but it's the one example given
+// for this term's reveal sheet, so it's used verbatim rather than
+// invented. Deliberately NOT reused for this term's own unreached
+// "correct" sheet further down — no content was given for a
+// Tempo-correct explanation, only Tempo-reveal.
+const WHY_EXPLANATION =
+  "Fast vibrations create high pitches, while slow vibrations create low pitches. Your brain hears this steady speed as one clear, specific tone.";
 
 type Outcome = "wrong" | "correct";
 
@@ -272,6 +281,7 @@ export default function TermThreePage() {
   const [micBlocked, setMicBlocked] = useState(false);
   const [hasCapturedFrames, setHasCapturedFrames] = useState(false);
   const [skipConfirmOpen, setSkipConfirmOpen] = useState(false);
+  const [whyRevealed, setWhyRevealed] = useState(false);
   const micPermissionGranted = useMicPermissionGranted();
   const setMicPermissionGranted = useSetMicPermissionGranted();
   const [micPermissionPromptOpen, setMicPermissionPromptOpen] = useState(false);
@@ -672,24 +682,49 @@ export default function TermThreePage() {
             <p className="flex-1 font-display text-[29.025px] leading-[29.025px] font-black text-brand-bold">
               We&apos;ll do it next time!
             </p>
-            <button aria-label="Dislike this reply">
-              <ThumbsDownIcon className="h-6 w-6 text-text-primary" />
-            </button>
-            <button aria-label="Like this reply">
-              <ThumbsUpIcon className="h-6 w-6 text-text-primary" />
-            </button>
+            <ReactionButtons />
           </div>
-          <BottomCta>
-            <motion.button
-              whileTap={{ scale: 0.94 }}
-              transition={snappy}
-              onClick={handleContinue}
-              className="relative flex h-[58px] w-full items-center justify-center rounded-full bg-interactive-primary px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
-            >
-              <span className="font-display text-[18px] font-semibold text-interactive-on-primary">
-                Got it - Continue
-              </span>
-            </motion.button>
+          {whyRevealed && (
+            <div className="px-4 pb-2">
+              <WhyExplanation variant="reveal">{WHY_EXPLANATION}</WhyExplanation>
+            </div>
+          )}
+          <BottomCta className="flex gap-1">
+            {whyRevealed ? (
+              <motion.button
+                whileTap={{ scale: 0.94 }}
+                transition={snappy}
+                onClick={handleContinue}
+                className="relative flex h-[58px] w-full items-center justify-center rounded-full bg-interactive-primary px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
+              >
+                <span className="font-display text-[18px] font-semibold text-interactive-on-primary">
+                  Got it - Continue
+                </span>
+              </motion.button>
+            ) : (
+              <>
+                <motion.button
+                  whileTap={{ scale: 0.94 }}
+                  transition={snappy}
+                  onClick={() => setWhyRevealed(true)}
+                  className="relative flex h-[58px] items-center justify-center rounded-full bg-interactive-secondary px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
+                >
+                  <span className="font-display text-[18px] font-semibold text-interactive-on-secondary">
+                    Why?
+                  </span>
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.94 }}
+                  transition={snappy}
+                  onClick={handleContinue}
+                  className="relative flex h-[58px] flex-1 items-center justify-center rounded-full bg-interactive-primary px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
+                >
+                  <span className="font-display text-[18px] font-semibold text-interactive-on-primary">
+                    Got it - Continue
+                  </span>
+                </motion.button>
+              </>
+            )}
           </BottomCta>
         </motion.div>
       </div>
@@ -735,12 +770,7 @@ export default function TermThreePage() {
               <p className="flex-1 font-display text-[26px] font-black text-coral-bold">
                 You are closer!
               </p>
-              <button aria-label="Dislike this reply">
-                <ThumbsDownIcon className="h-6 w-6 text-text-primary" />
-              </button>
-              <button aria-label="Like this reply">
-                <ThumbsUpIcon className="h-6 w-6 text-text-primary" />
-              </button>
+              <ReactionButtons />
             </div>
             <BottomCta className="flex gap-1">
               <motion.button
@@ -803,12 +833,7 @@ export default function TermThreePage() {
             <p className="flex-1 font-display text-[26px] font-black text-feedback-success-on-subtle">
               Exactly right
             </p>
-            <button aria-label="Dislike this reply">
-              <ThumbsDownIcon className="h-6 w-6 text-text-primary" />
-            </button>
-            <button aria-label="Like this reply">
-              <ThumbsUpIcon className="h-6 w-6 text-text-primary" />
-            </button>
+            <ReactionButtons />
           </div>
           <BottomCta className="flex gap-1">
             <motion.button

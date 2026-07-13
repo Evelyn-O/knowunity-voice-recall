@@ -24,36 +24,41 @@ import { gentle, snappy } from "@/lib/motion";
  * from the same session context /streak already used to route here,
  * rather than a query param:
  *
- * - Full (node 13900:26505, "Full summary"): reached whenever the recall
- *   step was ever engaged this session (a real attempt, or an explicit
- *   skip — same `termOutcomes`-non-empty signal /streak's own branch
- *   uses). 4 stat tiles including RECALL (the one genuinely dynamic
- *   number here — see below), "Try again" + "Claim XP" buttons.
+ * - Full (node 13900:26505, "Full summary"): reached whenever the student
+ *   actually attempted at least one term this session — a real voice or
+ *   text submission (`recallAttempted`), not merely a `termOutcomes` entry.
+ *   A session where every term was explicitly skipped and nothing was ever
+ *   submitted does NOT count — that's not "doing voice active recall," so
+ *   it falls through to the simplified variant below. 4 stat tiles
+ *   including RECALL (the one genuinely dynamic number here — see below),
+ *   "Try again" + "Claim XP" buttons.
  * - Simplified/no-recall (node 13900:26571, "Reveal - Lesson not
- *   perfect"): reached only when the recall step was NEVER engaged at
- *   all this session (no attempt, no skip — "Maybe later", or exiting
- *   with zero interaction). 3 tiles (no RECALL), a nudge line encouraging
+ *   perfect"): reached whenever the student never actually attempted a
+ *   term this session — no real attempt, whether or not any term was
+ *   explicitly skipped ("Maybe later", zero-interaction exit, or a
+ *   skip-only session). 3 tiles (no RECALL), a nudge line encouraging
  *   voice next time, "Try voice" (→ the first-time entry fork, since this
  *   student hasn't done the recall loop yet) + "Claim XP" (ends the
  *   session; routes back to the entry fork too, since no further screen
  *   exists yet in this prototype) buttons.
  *
- * XP/Score/Blazing are fixed mocked values (Figma's own literal numbers,
- * one set per variant) — Score/Blazing are explicitly "the Exam Plan's
- * existing recognition-quiz score, not a Voice Recall running score"
- * (SPEC.md §1.9), and no XP formula was specified, so these follow the
- * same "mock the recall intelligence" rule as every other scripted value
- * in this app rather than inventing a scoring algorithm. RECALL is the
- * one exception — SPEC.md calls it out as "the recall-specific metric,"
- * and it maps directly to data already tracked, so it's computed for
- * real: (terms not skipped) / (terms actually reached this session).
- *
- * The full variant's XP tile combines a base Exam Plan contribution with
- * the recall step's own RECALL_XP_EARNED (matching /recall-summary's own
- * number) — when the session engaged with recall ONLY via explicit skips
- * (zero real attempts), only the recall component drops to 0, not the
- * whole combined total (per this task's own instruction: don't zero out
- * XP that isn't the recall step's).
+ * Score/Blazing are fixed mocked values (Figma's own literal numbers, one
+ * set per variant) — explicitly "the Exam Plan's existing recognition-quiz
+ * score, not a Voice Recall running score" (SPEC.md §1.9), so these follow
+ * the same "mock the recall intelligence" rule as every other scripted
+ * value in this app rather than inventing a scoring algorithm. XP and
+ * RECALL are both computed for real: RECALL is SPEC.md's own
+ * recall-specific metric — (terms not skipped) / (terms actually reached
+ * this session) — and XP combines a fixed base Exam Plan contribution (50,
+ * Figma's own baseline) with the recall step's own contribution scaled by
+ * real performance: RECALL_XP_EARNED (100) × (recallSuccessful /
+ * recallTotal), rounded. A perfect session earns the full 150 baked into
+ * the image; a session with only some terms recalled unaided/hinted earns
+ * proportionally less, down to the 50 base-only floor for a real-attempt
+ * session where every attempted term still ended up "skipped" (e.g. the
+ * student attempted one term then exited before the rest resolved).
+ * `isFullVariant` already guarantees `recallAttempted`, so this tile is
+ * never reached by a session that never really engaged.
  *
  * Every stat tile is now one of the real exported box images
  * (public/images/*-summary-with(out)-recall.svg) instead of a hand-rolled
@@ -62,17 +67,17 @@ import { gentle, snappy } from "@/lib/motion";
  * to outlined paths), matching Figma pixel-for-pixel. SCORE and BLAZING
  * (both variants) are pure static drop-ins since those two are already
  * fixed mocked values that exactly match what's baked into the image. XP
- * (full variant only, since the zeroing case only applies there) and
- * RECALL are the two tiles with a REAL dynamic value that must survive a
- * session where it differs from the image's baked sample ("150"/"4/5") —
- * for those, the image supplies only the box/label/icon chrome, and the
- * baked value glyphs are covered by an opaque patch (bg-background-page,
- * matching the box's own inner-rect fill exactly) with the real value
- * rendered as live text on top, positioned over where the glyphs were.
- * Without-recall XP is never dynamic (always SIMPLE_STATS.xp), so it's a
- * plain image there.
+ * (full variant only) and RECALL are the two tiles with a REAL dynamic
+ * value that must survive a session where it differs from the image's
+ * baked sample ("150"/"4/5") — for those, the image supplies only the
+ * box/label/icon chrome, and the baked value glyphs are covered by an
+ * opaque patch (bg-background-page, matching the box's own inner-rect
+ * fill exactly) with the real value rendered as live text on top,
+ * positioned over where the glyphs were. Without-recall XP is never
+ * dynamic (always SIMPLE_STATS.xp), so it's a plain image there.
  */
-const FULL_STATS = { xp: 150, score: "7/10", blazing: "4:09" };
+const FULL_STATS_BASE_XP = 50;
+const FULL_STATS = { score: "7/10", blazing: "4:09" };
 const SIMPLE_STATS = { xp: 39, score: "7/10", blazing: "2:09" };
 
 /** A stat tile that's entirely the baked image — used wherever the shown
@@ -101,7 +106,11 @@ function StatImageWithValue({
     <div className="relative w-full">
       <img src={src} alt="" aria-hidden className="block w-full h-auto" />
       <div className="absolute left-[47%] top-[44%] h-[36%] w-[50%] flex items-center justify-center bg-background-page">
-        <span className={`font-display text-lg font-black tracking-wide ${accentClass}`}>
+        {/* font-sans (Inter Variable), not font-display (Bricolage) — the
+            baked box images use Greed Condensed Heavy, which per this
+            project's own font substitution falls back to Inter Variable,
+            not Bricolage. Matches SCORE/BLAZING's baked glyphs exactly. */}
+        <span className={`font-sans text-lg font-black tracking-wide ${accentClass}`}>
           {value}
         </span>
       </div>
@@ -126,11 +135,14 @@ export default function SummaryPage() {
   }, []);
 
   const attemptedTermIds = Object.keys(termOutcomes);
-  // Same "did the recall step ever get engaged" signal /streak's own
-  // branch uses (a real attempt, or an explicit skip) — not gated on
-  // voice specifically, since a skip-only or all-typed session still
-  // earns the full per-term breakdown.
-  const isFullVariant = attemptedTermIds.length > 0;
+  // Same "did the student actually attempt at least one term" signal
+  // /streak's own branch uses — a real voice or text submission
+  // (`recallAttempted`), not just termOutcomes having entries. A
+  // skip-only session (every term explicitly skipped, nothing ever
+  // submitted) still populates termOutcomes, but that's not "doing voice
+  // active recall" — it correctly falls through to the simplified
+  // no-recall variant, same as never touching the recall step at all.
+  const isFullVariant = recallAttempted;
 
   const recallTotal = attemptedTermIds.length;
   const recallSuccessful = Object.values(termOutcomes).filter(
@@ -138,20 +150,21 @@ export default function SummaryPage() {
   ).length;
 
   // "Claim XP" — both variants: ends this recall-step session by returning
-  // to the exam-plan path view (the pre-step lead-in's own "home"), not the
+  // to the exam-plan path view (the pre-step lead-in's own "home", and now
+  // the app's root `/` — see (recall)/page.tsx's own doc comment), not the
   // Voice Recall entry fork. Deliberately does not reset the recall session
   // (termOutcomes etc. stay as-is) — same as this button already did
   // nothing-resetting on the no-recall variant; a later quiz→fork visit
   // this same session correctly reads as "returning" per getEntryForkRoute.
   function goToPathView() {
-    router.push("/path");
+    router.push("/");
   }
 
   // "Try voice" — no-recall variant only: this student hasn't done the
-  // recall loop yet, so this is the first-time entry fork, not a
+  // recall loop yet, so this is the first-time entry fork (`/entry`), not a
   // recurring-user shortcut.
   function goToFirstTimeEntryFork() {
-    router.push("/");
+    router.push("/entry");
   }
 
   // Full variant's "Try again" only, so termOutcomes is guaranteed
@@ -166,21 +179,24 @@ export default function SummaryPage() {
     router.push(forkRoute);
   }
 
+  // Recall's own XP contribution scales with real performance this
+  // session — full RECALL_XP_EARNED for a perfect recallSuccessful ===
+  // recallTotal, proportionally less otherwise. recallTotal is guaranteed
+  // > 0 whenever isFullVariant (recallAttempted implies fillRemainingTermsAsSkipped
+  // already populated termOutcomes before this screen was reachable).
+  const recallXp = isFullVariant
+    ? Math.round((RECALL_XP_EARNED * recallSuccessful) / recallTotal)
+    : 0;
+
   const stats = isFullVariant
-    ? {
-        ...FULL_STATS,
-        // Only the recall step's own XP contribution zeroes out when the
-        // session engaged with recall ONLY via explicit skips (zero real
-        // attempts) — the rest of the combined total is untouched.
-        xp: recallAttempted ? FULL_STATS.xp : FULL_STATS.xp - RECALL_XP_EARNED,
-      }
+    ? { ...FULL_STATS, xp: FULL_STATS_BASE_XP + recallXp }
     : SIMPLE_STATS;
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
       <ConfettiBurst play={revealed} />
 
-      <div className="flex min-h-0 flex-1 flex-col items-center gap-8 overflow-y-auto px-5 pt-6 text-center">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-8 overflow-y-auto px-5 py-6 text-center">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
