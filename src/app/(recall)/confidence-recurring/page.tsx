@@ -6,6 +6,8 @@ import { BottomCta } from "@/components/bottom-cta";
 import { HighlightCard } from "@/components/highlight-card";
 import { PrimaryButton, SelectableButton, TextLinkButton } from "@/components/buttons";
 import {
+  COMBINED_TOTAL_STEPS,
+  CONFIDENCE_STEP,
   useMascotBubble,
   useRecallStep,
   useRequestExit,
@@ -51,7 +53,11 @@ export default function ConfidenceRecurringPage() {
   // (recall)/layout.tsx) is what actually routes to /streak.
   const requestExit = useRequestExit();
 
-  useRecallStep({ currentStep: 2, totalSteps: 6, onExit: requestExit });
+  // Reuses CONFIDENCE_STEP's own slot rather than getting a new one — a
+  // returning student never sees /entry, so the bar deliberately jumps
+  // straight from the quiz's step to this one (skipping ENTRY_STEP)
+  // instead of shrinking COMBINED_TOTAL_STEPS just for this session type.
+  useRecallStep({ currentStep: CONFIDENCE_STEP, totalSteps: COMBINED_TOTAL_STEPS, onExit: requestExit });
   useMascotBubble({
     pose: selected ? "giggling" : "cool",
     alt: selected ? "Noe giggling" : "Noe, wearing sunglasses and a cap",

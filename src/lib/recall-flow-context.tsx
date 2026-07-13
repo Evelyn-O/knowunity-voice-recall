@@ -10,10 +10,14 @@ import type { InputMode } from "@/lib/term-attempt-state";
  * value — this context is how an individual screen tells the layout what
  * step it's on.
  *
- * Step counting: entry fork, confidence tap, and each term screen each
- * count as one step. The mic-permission primer/OS dialog never calls
- * useRecallStep — it isn't a counted step. currentStep=null hides the
- * WHOLE TopBar (progress bar, exit X, and streak chip) — every
+ * Step counting: the pre-step quiz's own last question, entry fork,
+ * confidence tap, and each term screen all share ONE combined step
+ * sequence now (see QUIZ_TOTAL_QUESTIONS/ENTRY_STEP/CONFIDENCE_STEP/
+ * TERM_STEP below) — the bar reads as one continuous journey from the quiz
+ * through the end of Voice Recall, never resetting at the fork. The
+ * mic-permission OS dialog itself never calls useRecallStep — it isn't a
+ * counted step, just an overlay on the /entry screen. currentStep=null
+ * hides the WHOLE TopBar (progress bar, exit X, and streak chip) — every
  * summary-path screen (/streak, /recall-summary, /summary) registers
  * `currentStep: null` for exactly this reason: those screens have no app
  * bar at all in their Figma frames, not just no progress bar.
@@ -150,6 +154,56 @@ export const BASE_TERM_IDS: readonly TermId[] = [
   "tempo",
   "syncopation",
 ];
+
+/**
+ * The combined progress-bar step map (TopBar), spanning the pre-step quiz
+ * AND the Voice Recall loop as one continuous sequence instead of two
+ * separately-numbered ones. Previously /quiz ran its own isolated 1-4
+ * (unrelated to VR's own 1-6) and VR itself reset to step 1 on /entry —
+ * both now collapse into a single 1-COMBINED_TOTAL_STEPS run so the bar
+ * never resets or jumps backward across that boundary.
+ *
+ * QUIZ_TOTAL_QUESTIONS is fixed at 10 per Evelyn's own framing ("treat the
+ * pre-step's mocked question as question 10 of 10") — only the last
+ * question is actually built, the other 9 are assumed-prior and never
+ * rendered. TOTAL_VR_TERMS is derived from BASE_TERM_IDS (not a hardcoded
+ * literal) — 4 base terms + Cadence, fixed at 5 always, confirmed with
+ * Evelyn rather than made session-dependent: the shipped demo script
+ * always triggers Cadence, so this matches every reference screen; a
+ * hypothetical "perfect" run that skips Cadence will top out at 16/
+ * COMBINED_TOTAL_STEPS (not 100%) right before the bar disappears on
+ * /streak — a known, accepted gap, not something this tracks dynamically.
+ *
+ * Entry (mic-permission primer) and confidence tap each keep their own
+ * step slot too (confirmed with Evelyn — the alternative was holding the
+ * bar flat through both screens, which she didn't want): ENTRY_STEP and
+ * CONFIDENCE_STEP sit right after the quiz's own 10. /confidence-recurring
+ * (the merged primer+confidence screen a RETURNING student sees instead of
+ * /entry) reuses CONFIDENCE_STEP's own slot rather than getting a new one —
+ * that student never sees /entry at all, so this deliberately keeps
+ * COMBINED_TOTAL_STEPS identical for both session types (a returning
+ * student's bar visibly jumps from 10 to 12, skipping 11, rather than the
+ * total shrinking to 16 for their session only) — simpler than branching
+ * every term's own totalSteps on which fork the session took, at the cost
+ * of that one small jump.
+ *
+ * TERM_STEP maps each term to its own slot, in fixed base-term order plus
+ * cadence last — this also fixes a pre-existing quirk where term-4 and
+ * term-5 both showed the same "step 6 of 6" (term-5, the conditional bonus
+ * round, had no step slot of its own before this).
+ */
+export const QUIZ_TOTAL_QUESTIONS = 10;
+export const TOTAL_VR_TERMS = BASE_TERM_IDS.length + 1;
+export const ENTRY_STEP = QUIZ_TOTAL_QUESTIONS + 1;
+export const CONFIDENCE_STEP = QUIZ_TOTAL_QUESTIONS + 2;
+export const COMBINED_TOTAL_STEPS = CONFIDENCE_STEP + TOTAL_VR_TERMS;
+export const TERM_STEP: Record<TermId, number> = {
+  note: CONFIDENCE_STEP + 1,
+  "time-signature": CONFIDENCE_STEP + 2,
+  tempo: CONFIDENCE_STEP + 3,
+  syncopation: CONFIDENCE_STEP + 4,
+  cadence: CONFIDENCE_STEP + 5,
+};
 
 /**
  * The one place "which entry-fork variant should this session see" is

@@ -9,6 +9,8 @@ import { BottomCta } from "@/components/bottom-cta";
 import { PrimaryButton, TextLinkButton } from "@/components/buttons";
 import { IosPermissionDialog } from "@/components/ios-permission-dialog";
 import {
+  COMBINED_TOTAL_STEPS,
+  ENTRY_STEP,
   useMascotBubble,
   useRecallChromeBlur,
   useRecallStep,
@@ -47,8 +49,8 @@ export default function EntryScreen() {
   const requestExit = useRequestExit();
 
   useRecallStep({
-    currentStep: 1,
-    totalSteps: 6,
+    currentStep: ENTRY_STEP,
+    totalSteps: COMBINED_TOTAL_STEPS,
     onExit: requestExit,
   });
   // Tells the layout to blur TopBar too, so it blurs together with this
@@ -77,9 +79,13 @@ export default function EntryScreen() {
               aria-hidden
               className="absolute bottom-2 h-5 w-32 rounded-full bg-black/40 blur-md"
             />
+            {/* Pure opacity fade, no y-offset — this fires on route mount
+                (arriving at /entry), and a vertical offset here competes
+                with the shared layout's own horizontal screen-transition
+                slide instead of complementing it. */}
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               transition={gentle}
               className="relative"
             >

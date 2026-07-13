@@ -211,9 +211,12 @@ export default function PathPage() {
           exactly match the other four (flagged as too big), settled on
           28px — a deliberate step down from the other four's 32px box, not
           a mistake to "fix" back to matching. */}
+      {/* Pure opacity fade, no y-offset — fires on route mount, and a
+          vertical offset here competes with the shared layout's own
+          horizontal screen-transition slide instead of complementing it. */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={gentle}
         className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-background-page px-4 pb-[env(safe-area-inset-bottom)] pt-2"
       >

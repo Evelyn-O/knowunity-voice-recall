@@ -5,6 +5,8 @@ import { Suspense, useState } from "react";
 import { BottomCta } from "@/components/bottom-cta";
 import { PrimaryButton, SelectableButton } from "@/components/buttons";
 import {
+  COMBINED_TOTAL_STEPS,
+  CONFIDENCE_STEP,
   useMascotBubble,
   useRecallStep,
   useRequestExit,
@@ -35,7 +37,7 @@ function ConfidenceScreen() {
 
   const requestExit = useRequestExit();
 
-  useRecallStep({ currentStep: 2, totalSteps: 6, onExit: requestExit });
+  useRecallStep({ currentStep: CONFIDENCE_STEP, totalSteps: COMBINED_TOTAL_STEPS, onExit: requestExit });
   useMascotBubble({
     pose: selected ? "giggling" : "standby",
     alt: selected ? "Noe giggling" : "Noe, calm and attentive",

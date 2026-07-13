@@ -8,9 +8,11 @@ import { gentle } from "@/lib/motion";
  * Persistent chrome on every recall screen (design.md §4 "Persistent chrome"):
  * exit button, term-queue progress bar, streak chip.
  *
- * Step counting: entry fork, confidence tap, and each term screen each count
- * as one step — the mic-permission primer/OS dialog does NOT increment
- * progress. The bar reaches 100% on the last term screen, not the summary.
+ * Step counting: the pre-step quiz, entry fork, confidence tap, and each
+ * term screen all share one combined sequence (see recall-flow-context.tsx's
+ * QUIZ_TOTAL_QUESTIONS/ENTRY_STEP/CONFIDENCE_STEP/TERM_STEP) — the
+ * mic-permission primer/OS dialog itself does NOT increment progress. The
+ * bar reaches 100% on the last term screen, not the summary.
  *
  * Pass `currentStep={null}` to unmount the progress bar entirely (the
  * summary screen has no bar at all, rather than one stuck at 100%). A

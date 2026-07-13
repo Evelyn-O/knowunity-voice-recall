@@ -103,9 +103,12 @@ export default function RecallSummaryPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 pt-2">
+        {/* Pure opacity fade, no y-offset — fires on route mount, and a
+            vertical offset here competes with the shared layout's own
+            horizontal screen-transition slide instead of complementing it. */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={gentle}
           className="flex flex-col items-center gap-4 text-center"
         >

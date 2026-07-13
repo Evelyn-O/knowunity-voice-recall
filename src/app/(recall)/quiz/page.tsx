@@ -7,7 +7,10 @@ import { BottomCta } from "@/components/bottom-cta";
 import { PrimaryButton, TextLinkButton } from "@/components/buttons";
 import { ExitConfirmSheet } from "@/components/exit-confirm-sheet";
 import { ThumbsDownIcon, ThumbsUpIcon } from "@/components/icons";
+import { WhyExplanation } from "@/components/why-explanation";
 import {
+  COMBINED_TOTAL_STEPS,
+  QUIZ_TOTAL_QUESTIONS,
   getEntryForkRoute,
   useMascotBubble,
   useRecallStep,
@@ -19,6 +22,8 @@ const QUESTION =
   "A standard major triad consists of a root, a major third, and a perfect fifth.";
 const CORRECT_REPLY = "Nice!";
 const INCORRECT_REPLY = "Maybe next time!";
+const WHY_EXPLANATION =
+  "This specific combination creates a perfectly balanced chord, blending three stable tones that sound highly pleasing and harmonious together.";
 
 type Answer = "true" | "false";
 type Stage = "idle" | "review";
@@ -37,8 +42,10 @@ type Stage = "idle" | "review";
  *
  * Reuses the exact TopBar/MascotBubble/BottomCta machinery the Voice
  * Recall screens already use (this screen's Figma frames are visually
- * identical to them), but with its own step numbers (this quiz's own
- * progress, unrelated to the recall flow's 1-6). X opens a local
+ * identical to them). This is question 10 of 10 in the combined
+ * quiz+recall progress bar (recall-flow-context.tsx's
+ * QUIZ_TOTAL_QUESTIONS/COMBINED_TOTAL_STEPS) — the bar continues into
+ * Voice Recall from here rather than resetting at the fork. X opens a local
  * "pre-step" ExitConfirmSheet (Figma node 14033:4400) rather than the
  * shared layout-level exitConfirmOpen every VR screen's X uses — "Leave"
  * here goes to `/` (the exam-plan path view, now the app's root — see
@@ -52,6 +59,7 @@ export default function QuizPage() {
   const [stage, setStage] = useState<Stage>("idle");
   const [selected, setSelected] = useState<Answer | null>(null);
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+  const [showWhy, setShowWhy] = useState(false);
 
   // X no longer exits immediately (Figma node 14033:4400) — opens a local
   // confirm sheet instead. "Leave" (the sheet's own onLeave) is what
@@ -59,7 +67,7 @@ export default function QuizPage() {
   // boolean-overlay pattern SkipConfirmSheet already uses elsewhere (the
   // underlying quiz stage/selection never changes while it's open).
   const onExit = useCallback(() => setExitConfirmOpen(true), []);
-  useRecallStep({ currentStep: 3, totalSteps: 4, onExit });
+  useRecallStep({ currentStep: QUIZ_TOTAL_QUESTIONS, totalSteps: COMBINED_TOTAL_STEPS, onExit });
   useMascotBubble({ pose: "standby", alt: "Noe", text: QUESTION, dimmed: stage === "review" });
 
   function goToEntryFork() {
@@ -120,7 +128,7 @@ export default function QuizPage() {
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           transition={sheet}
-          className={`absolute inset-x-0 bottom-0 rounded-t-[32px] border-t border-border-default ${
+          className={`absolute inset-x-0 bottom-0 z-20 rounded-t-[32px] border-t border-border-default ${
             isCorrect ? "bg-feedback-success-subtle" : "bg-coral-subtle"
           }`}
         >
@@ -146,12 +154,21 @@ export default function QuizPage() {
               <ThumbsUpIcon className="h-6 w-6 text-text-primary" />
             </button>
           </div>
+          {showWhy && (
+            <div className="px-7 pt-3">
+              <WhyExplanation variant={isCorrect ? "correct" : "incorrect"}>
+                {WHY_EXPLANATION}
+              </WhyExplanation>
+            </div>
+          )}
           <BottomCta className="flex gap-1">
-            {/* Stub — "Why?" is Non-Goal #1 (open Q&A), Harry sign-off
-                pending, same as every other Result-style sheet in this app. */}
+            {/* "Why?" reveals a static explanation card below — still not
+                open Q&A/tutoring (Non-Goal #1): it's one fixed line tied to
+                this question, not a free-form answer to a student prompt. */}
             <motion.button
               whileTap={{ scale: 0.94 }}
               transition={snappy}
+              onClick={() => setShowWhy((v) => !v)}
               className="relative flex h-[58px] items-center justify-center rounded-full bg-interactive-secondary px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
             >
               <span className="font-display text-[18px] font-semibold text-interactive-on-secondary">

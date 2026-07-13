@@ -23,6 +23,8 @@ import {
   TrashIcon,
 } from "@/components/icons";
 import {
+  COMBINED_TOTAL_STEPS,
+  TERM_STEP,
   useLastInputMode,
   useMascotBubble,
   useMicPermissionGranted,
@@ -225,7 +227,7 @@ export default function TermFivePage() {
   // directly — see term-1's own onExit for the full rationale.
   const requestExit = useRequestExit();
 
-  useRecallStep({ currentStep: 6, totalSteps: 6, onExit: requestExit });
+  useRecallStep({ currentStep: TERM_STEP.cadence, totalSteps: COMBINED_TOTAL_STEPS, onExit: requestExit });
   // Blurs the whole chrome behind this term's own re-shown mic-permission
   // primer, same treatment as the entry screen's original primer.
   useRecallChromeBlur(micPermissionPromptOpen);
@@ -453,9 +455,13 @@ export default function TermFivePage() {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-5 pt-16">
+          {/* Pure opacity fade, no y-offset — this stage is the first thing
+              shown on routing into /term-5 (a route mount), and a vertical
+              offset here competes with the shared layout's own horizontal
+              screen-transition slide instead of complementing it. */}
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={gentle}
             className="relative mb-6 max-w-[300px] rounded-bubble bg-background-surface p-4"
           >
@@ -480,8 +486,8 @@ export default function TermFivePage() {
               className="absolute bottom-2 h-5 w-32 rounded-full bg-black/40 blur-md"
             />
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               transition={gentle}
               className="relative"
             >
@@ -544,7 +550,7 @@ export default function TermFivePage() {
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           transition={sheet}
-          className="absolute inset-x-0 bottom-0 rounded-t-[32px] border-t border-border-default bg-feedback-success-subtle"
+          className="absolute inset-x-0 bottom-0 z-20 rounded-t-[32px] border-t border-border-default bg-feedback-success-subtle"
         >
           <div className="mx-auto mt-2 h-1 w-8 rounded-full bg-background-stacking" />
           <div className="flex items-center gap-2 px-7 pt-3">
@@ -555,7 +561,7 @@ export default function TermFivePage() {
             <ReactionButtons />
           </div>
           {whyRevealed && (
-            <div className="px-4 pb-2">
+            <div className="px-4 pb-2 mt-5">
               <WhyExplanation variant="correct">{WHY_EXPLANATION}</WhyExplanation>
             </div>
           )}

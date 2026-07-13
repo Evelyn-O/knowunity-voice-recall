@@ -23,6 +23,8 @@ import {
   TrashIcon,
 } from "@/components/icons";
 import {
+  COMBINED_TOTAL_STEPS,
+  TERM_STEP,
   useLastInputMode,
   useMascotBubble,
   useMicPermissionGranted,
@@ -265,7 +267,7 @@ export default function TermTwoPage() {
   // directly — see term-1's own onExit for the full rationale.
   const requestExit = useRequestExit();
 
-  useRecallStep({ currentStep: 4, totalSteps: 6, onExit: requestExit });
+  useRecallStep({ currentStep: TERM_STEP["time-signature"], totalSteps: COMBINED_TOTAL_STEPS, onExit: requestExit });
   // Blurs the whole chrome behind this term's own re-shown mic-permission
   // primer, same treatment as the entry screen's original primer.
   useRecallChromeBlur(micPermissionPromptOpen);
@@ -585,7 +587,7 @@ export default function TermTwoPage() {
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           transition={sheet}
-          className="absolute inset-x-0 bottom-0 rounded-t-[32px] border-t border-border-default bg-pro-subtle"
+          className="absolute inset-x-0 bottom-0 z-20 rounded-t-[32px] border-t border-border-default bg-pro-subtle"
         >
           <div className="mx-auto mt-2 h-1 w-8 rounded-full bg-background-stacking" />
           <div className="flex items-center gap-2 px-7 pt-3">
@@ -651,7 +653,7 @@ export default function TermTwoPage() {
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           transition={sheet}
-          className="absolute inset-x-0 bottom-0 rounded-t-[32px] border-t border-border-default bg-feedback-success-subtle"
+          className="absolute inset-x-0 bottom-0 z-20 rounded-t-[32px] border-t border-border-default bg-feedback-success-subtle"
         >
           <div className="mx-auto mt-2 h-1 w-8 rounded-full bg-background-stacking" />
           <div className="flex items-center gap-2 px-7 pt-3">
@@ -662,7 +664,7 @@ export default function TermTwoPage() {
             <ReactionButtons />
           </div>
           {whyRevealed && (
-            <div className="px-4 pb-2">
+            <div className="px-4 pb-2 mt-5">
               <WhyExplanation variant="correct">{WHY_EXPLANATION}</WhyExplanation>
             </div>
           )}

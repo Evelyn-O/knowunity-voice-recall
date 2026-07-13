@@ -149,9 +149,28 @@ function RecallChrome({ children }: { children: React.ReactNode }) {
         <AnimatePresence>
           {mascot && (
             <motion.div
-              key="mascot-bubble"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
+              // Keyed by pathname, not a static string — this makes the
+              // block fully remount (a plain opacity crossfade, via this
+              // AnimatePresence) on every route change, INCLUDING
+              // term-to-term hops (each term route has a distinct
+              // pathname even though the main content's own motionKey
+              // collapses them — see getMotionKey above). Previously this
+              // used a single static key, so pose/text/dimmed all
+              // crossfaded in place via MascotBubble's own internal
+              // layout-FLIP resize — smooth for a single prop changing,
+              // but term-to-term changes pose+text+dimmed all at once
+              // (Result's dimmed bubble -> next term's fresh prompt),
+              // which visibly glitched (a brief height jump as the FLIP
+              // and the nested pose/text AnimatePresences fought for the
+              // same frame). A hard remount + simple fade sidesteps that
+              // entirely: "a simple animation from one term to another,"
+              // per this task's own ask. Pose/text crossfades WITHIN one
+              // term's own stage progression (pathname unchanged) still
+              // go through MascotBubble's own smooth internal handling,
+              // untouched.
+              key={pathname}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={gentle}
               className="px-4 pt-6"
