@@ -1,6 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { TopBar } from "@/components/top-bar";
 import { MascotBubble } from "@/components/mascot-bubble";
@@ -13,7 +14,12 @@ import {
   useRecallChromeValue,
   useTermOutcomes,
 } from "@/lib/recall-flow-context";
-import { gentle } from "@/lib/motion";
+import { gentle, soft } from "@/lib/motion";
+
+/** Term-loop routes only — used to detect "term-to-term advancement",
+ * the one screen-to-screen transition this task's own brief says must
+ * stay exactly as it already renders (instant, no slide). */
+const isTermRoute = (path: string | null) => !!path && /^\/term-\d/.test(path);
 
 /**
  * Persistent chrome for the whole Voice Recall flow: entry fork →
@@ -58,12 +64,30 @@ import { gentle } from "@/lib/motion";
  */
 function RecallChrome({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { currentStep, totalSteps, onExit, chromeBlurred, mascot, exitConfirmOpen } =
     useRecallChromeValue();
   const cancelExit = useCancelExit();
   const recallAttempted = useRecallAttempted();
   const termOutcomes = useTermOutcomes();
   const fillRemainingTermsAsSkipped = useFillRemainingTermsAsSkipped();
+
+  // motion-guide.md's own "Screen-to-screen" recipe ("push transitions
+  // slide in from the right"), applied at the route level for the first
+  // time — every prior route change here was an instant swap. Term-to-term
+  // advancement (term-1 → term-2 etc.) is excluded per this task's own
+  // scope: that's a content change within the same mic loop, not a screen
+  // transition, so it keeps the exact instant swap it already had (a
+  // same-tick, zero-duration "transition" rather than skipping the
+  // AnimatePresence wrapper entirely — removing the wrapper for only some
+  // route pairs would risk a genuine double-mount of two term screens'
+  // side-effecting hooks; a 0-duration one collapses to the same instant
+  // swap without that risk).
+  const prevPathnameRef = useRef<string | null>(null);
+  const shouldSlide = !(isTermRoute(prevPathnameRef.current) && isTermRoute(pathname));
+  useEffect(() => {
+    prevPathnameRef.current = pathname;
+  }, [pathname]);
 
   // Same "did the recall step ever get engaged" signal the summary flow
   // already uses (a real attempt, or an explicit skip) — this single
@@ -126,7 +150,18 @@ function RecallChrome({ children }: { children: React.ReactNode }) {
             </motion.div>
           )}
         </AnimatePresence>
-        {children}
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.div
+            key={pathname}
+            initial={shouldSlide ? { x: 24, opacity: 0 } : { x: 0, opacity: 1 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={shouldSlide ? { x: -24, opacity: 0 } : { x: 0, opacity: 1 }}
+            transition={shouldSlide ? soft : { duration: 0 }}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       <ExitConfirmSheet

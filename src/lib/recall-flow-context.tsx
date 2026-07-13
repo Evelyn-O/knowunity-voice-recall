@@ -151,6 +151,27 @@ export const BASE_TERM_IDS: readonly TermId[] = [
   "syncopation",
 ];
 
+/**
+ * The one place "which entry-fork variant should this session see" is
+ * decided — first-time (`/`) if the recall step has never really been
+ * engaged this session (`termOutcomes` empty, or every recorded outcome is
+ * "skipped"), otherwise returning (`/confidence-recurring`). Extracted from
+ * what was previously the same `allSkipped ? "/" : "/confidence-recurring"`
+ * expression duplicated identically in recall-summary/page.tsx and
+ * summary/page.tsx's own "Try again" handlers; the pre-step quiz flow
+ * (`/quiz`'s "Skip to next question" and its own no-answer-given path) needed
+ * the exact same determination a third time, so it's centralized here
+ * instead of copy-pasted again. `Object.values({}).every(...)` is `true`
+ * (vacuous truth), so an empty `termOutcomes` — a student who has never
+ * touched the recall step this session — correctly resolves to `"/"`.
+ */
+export function getEntryForkRoute(
+  termOutcomes: Partial<Record<TermId, TermOutcome>>
+): "/" | "/confidence-recurring" {
+  const allSkipped = Object.values(termOutcomes).every((o) => o === "skipped");
+  return allSkipped ? "/" : "/confidence-recurring";
+}
+
 type MascotBubbleValue = {
   pose: string;
   alt: string;

@@ -9,6 +9,7 @@ import { PrimaryButton } from "@/components/buttons";
 import { CountUpNumber } from "@/components/count-up-number";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import {
+  getEntryForkRoute,
   useMascotBubble,
   useRecallAttempted,
   useRecallStep,
@@ -136,8 +137,14 @@ export default function SummaryPage() {
     (o) => o !== "skipped"
   ).length;
 
-  function endSession() {
-    router.push("/");
+  // "Claim XP" — both variants: ends this recall-step session by returning
+  // to the exam-plan path view (the pre-step lead-in's own "home"), not the
+  // Voice Recall entry fork. Deliberately does not reset the recall session
+  // (termOutcomes etc. stay as-is) — same as this button already did
+  // nothing-resetting on the no-recall variant; a later quiz→fork visit
+  // this same session correctly reads as "returning" per getEntryForkRoute.
+  function goToPathView() {
+    router.push("/path");
   }
 
   // "Try voice" — no-recall variant only: this student hasn't done the
@@ -147,15 +154,16 @@ export default function SummaryPage() {
     router.push("/");
   }
 
-  // Full variant only, so termOutcomes is guaranteed non-empty here — same
-  // "every term skipped" carve-out as recall-summary's own handleTryAgain:
-  // that specific case means nothing was ever really attempted, so it
-  // routes back through the first-time entry fork instead of the merged
-  // recurring screen. Reset happens either way, right before navigating.
+  // Full variant's "Try again" only, so termOutcomes is guaranteed
+  // non-empty here — same "every term skipped" carve-out as
+  // recall-summary's own handleTryAgain: that specific case means nothing
+  // was ever really attempted, so it routes back through the first-time
+  // entry fork instead of the merged recurring screen. Reset happens
+  // either way, right before navigating.
   function handleTryAgain() {
-    const allSkipped = Object.values(termOutcomes).every((o) => o === "skipped");
+    const forkRoute = getEntryForkRoute(termOutcomes);
     resetRecallSession();
-    router.push(allSkipped ? "/" : "/confidence-recurring");
+    router.push(forkRoute);
   }
 
   const stats = isFullVariant
@@ -266,9 +274,9 @@ export default function SummaryPage() {
         )}
       </div>
 
-      <BottomCta className="flex gap-2">
+      <BottomCta className="flex flex-col gap-2">
         {isFullVariant ? (
-          <>
+          <div className="flex gap-2">
             {/* Hand-rolled, not SecondaryButton — see recall-summary/
                 page.tsx for why (shared pillBase is w-full). */}
             <motion.button
@@ -281,31 +289,41 @@ export default function SummaryPage() {
                 Try again
               </span>
             </motion.button>
-            {/* Confirms SPEC.md §2D's own "inferred — confirm" note: Claim
-                XP loops back to a fresh confidence tap for a new practice
-                round, same destination logic as "Try again" right next to
-                it (including the all-skipped carve-out to the first-time
-                entry fork) — not a session-ending action on this variant. */}
-            <PrimaryButton onClick={handleTryAgain} className="flex-1">
+            {/* Claim XP ends this recall-step session at the path view —
+                see goToPathView's own doc comment above for why this no
+                longer shares handleTryAgain with "Try again" (a later,
+                explicit instruction superseded SPEC.md §2D's earlier
+                "loops back to confidence tap" reading). */}
+            <PrimaryButton onClick={goToPathView} className="flex-1">
               Claim XP
             </PrimaryButton>
-          </>
+          </div>
         ) : (
-          <>
+          <div className="flex gap-2">
+            {/* Corrected: this screen's own Figma frame (node 13900:26571)
+                only ever has 2 buttons — an earlier pass here mistakenly
+                added a 3rd "Try again", removed. "Claim XP" and "Try
+                voice" share the same 21.77px/Bricolage Bold type (only
+                their fill/outline differs) — hand-rolled "Try voice" can't
+                reuse SecondaryButton (its shared pillBase is w-full, see
+                recall-summary/page.tsx for why), so its label is matched
+                to PrimaryButton's own pillLabel styling by hand instead of
+                the smaller text/weight other hand-rolled pills on this
+                screen use. */}
             <motion.button
               whileTap={{ scale: 0.94 }}
               transition={snappy}
               onClick={goToFirstTimeEntryFork}
               className="relative flex h-[58px] items-center justify-center rounded-full bg-interactive-secondary px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
             >
-              <span className="font-display text-[18px] font-semibold text-interactive-on-secondary">
+              <span className="font-display text-[21px] font-bold text-interactive-on-secondary">
                 Try voice
               </span>
             </motion.button>
-            <PrimaryButton onClick={endSession} className="flex-1">
+            <PrimaryButton onClick={goToPathView} className="flex-1">
               Claim XP
             </PrimaryButton>
-          </>
+          </div>
         )}
       </BottomCta>
     </div>

@@ -6,7 +6,7 @@ import { BottomCta } from "@/components/bottom-cta";
 import { PrimaryButton, SecondaryButton } from "@/components/buttons";
 import { sheet } from "@/lib/motion";
 
-export type ExitConfirmVariant = "first-time" | "in-progress";
+export type ExitConfirmVariant = "first-time" | "in-progress" | "pre-step";
 
 /**
  * The soft exit-confirmation bottom sheet (Figma nodes 13965:41377
@@ -39,6 +39,18 @@ const COPY: Record<
     alt: "Noe, laughing",
     headline: "Almost there!",
     subcopy: "Your progress will be saved for when you're back.",
+  },
+  // The pre-step quiz's own X (Figma node 14033:4400) — same headline as
+  // "in-progress" but distinct subcopy/pose (a neutral "standby" mascot,
+  // matching design.md's own "standby — pre-step / neutral prompts" note),
+  // and used locally by /quiz rather than through the shared layout-level
+  // exitConfirmOpen flag every VR screen's X shares — "Leave" here goes to
+  // /path, not /streak.
+  "pre-step": {
+    pose: "standby",
+    alt: "Noe",
+    headline: "Almost there!",
+    subcopy: "Just a few more and we will be ready, you got this!",
   },
 };
 

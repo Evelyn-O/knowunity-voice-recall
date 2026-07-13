@@ -9,6 +9,7 @@ import { PrimaryButton } from "@/components/buttons";
 import { CountUpNumber } from "@/components/count-up-number";
 import { TermResultRow } from "@/components/term-result-row";
 import {
+  getEntryForkRoute,
   useMascotBubble,
   usePreviousSessionOutcomes,
   useRecallAttempted,
@@ -90,9 +91,9 @@ export default function RecallSummaryPage() {
   // task's own instruction. Reset happens either way, right before
   // navigating into the new session, so the next attempt starts clean.
   function handleTryAgain() {
-    const allSkipped = Object.values(termOutcomes).every((o) => o === "skipped");
+    const forkRoute = getEntryForkRoute(termOutcomes);
     resetRecallSession();
-    router.push(allSkipped ? "/" : "/confidence-recurring");
+    router.push(forkRoute);
   }
 
   function handleContinue() {
