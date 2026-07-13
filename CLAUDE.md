@@ -153,6 +153,14 @@ unaffected by the group — `/`, `/confidence`, `/confidence-recurring`, etc.):
     a bespoke eyes graphic, AND both status lines together as one static
     composite (confirmed by inspecting it), which would mean non-real,
     non-tokenized text unlike everywhere else in this app.
+    **Superseded by a later pass:** Evelyn asked for voice and
+    text-fallback's Checking-it icon to be made consistent — both now use
+    the shared `CheckingItIcon` component instead, which crops
+    `checking-it-mic.svg` down to just its circle+eyes region (discarding
+    the asset's own baked text portion, so the non-tokenized-text problem
+    flagged above doesn't apply — the real tokenized "Checking it"/"Give
+    me a second" text still renders separately, exactly as before). See
+    the dedicated "Checking it" build-status bullet further down.
   - The bottom "I can't speak right now" pill (and the Result sheet's
     "Why?"/"Continue" pair) are hand-rolled locally in `term-1/page.tsx`,
     not the shared `SecondaryButton` — its own baked-in `text-[21px]`
@@ -747,7 +755,14 @@ unaffected by the group — `/`, `/confidence`, `/confidence-recurring`, etc.):
   aloud. Scoped narrowly to the Checking stage specifically
   (`stage === "checking" && inputMode === "text"`); voice mode's own
   Checking (and its separate big-mic-button mascot) is completely
-  unchanged. **Superseded by a later pass:** the Result/Hint/Reveal
+  unchanged. **Superseded by a later pass, for `CheckingIndicator`'s own
+  icon specifically:** `CheckingIndicator` (and voice mode's matching
+  inline circle) now both show the shared `CheckingItIcon` crop
+  regardless of modality instead — see the dedicated "Checking it" bullet
+  further down. The PERSISTENT TOP BUBBLE'S pose logic described in this
+  bullet (the "reading" vs "listening" swap for the chat bubble above the
+  mic button) is a separate mechanism and is untouched by that later
+  pass. **Superseded by a (different) later pass:** the Result/Hint/Reveal
   screens' dimmed top-bubble pose was originally left showing
   "listening" regardless of mode as a deliberate scope decision — a
   follow-up request explicitly extended the same `inputMode === "text"
@@ -817,6 +832,167 @@ unaffected by the group — `/`, `/confidence`, `/confidence-recurring`, etc.):
       app uses, so a session that already did a VR round this session
       and comes back through the quiz correctly lands on the returning
       fork, not always the first-time one.
+    - **The review sheet's "Why?" button is now real, not a stub.**
+      Tapping it reveals a `WhyExplanation` box (shared with the VR
+      terms' own Result/Reveal sheets — see the dedicated build-status
+      bullet below) with a fixed explanation of this question's answer.
+      Unlike the terms' own Why boxes, tapping Why? here does NOT collapse
+      the Why?/Continue button pair into a single button — both stay
+      visible after reveal, matching this screen's own Figma frames
+      (`14036:17120` correct / `14036:17147` incorrect) rather than the
+      terms' collapse-to-one-button pattern. Added an `"incorrect"`
+      (coral) variant to `WhyExplanation` specifically for this screen's
+      own incorrect-answer case — the component previously only had
+      `"correct"` (green, for terms) and `"reveal"` (purple, for term-3).
+- **Combined quiz+recall progress bar.** The pre-step quiz and the Voice
+  Recall term loop now share ONE continuous progress sequence instead of
+  two separately-numbered ones — previously `/quiz` ran its own isolated
+  1–4 (unrelated to VR's own 1–6) and the bar visibly reset to 1/6 the
+  moment VR's entry fork began. New constants in
+  `lib/recall-flow-context.tsx`: `QUIZ_TOTAL_QUESTIONS` (10 — only the
+  last question is actually built, the other 9 are assumed-prior and
+  never rendered), `ENTRY_STEP`/`CONFIDENCE_STEP` (11/12), `TERM_STEP` (a
+  `TermId → number` map, 13–17), `COMBINED_TOTAL_STEPS` (17, derived from
+  `BASE_TERM_IDS.length + 1` for Cadence, not hardcoded). Two decisions
+  confirmed with Evelyn rather than guessed: (1) entry/confidence keep
+  their OWN step slots (the alternative — holding the bar flat through
+  both screens — was considered and rejected); (2) the VR term count is
+  fixed at 5 always, not session-dependent — a hypothetical "perfect" run
+  that skips Cadence tops out at 16/17 (not 100%) right before the bar
+  disappears on `/streak`, a known/accepted gap rather than something
+  dynamically tracked. `/confidence-recurring` reuses `CONFIDENCE_STEP`'s
+  own slot (a returning student never sees `/entry`, so the bar visibly
+  jumps from 10→12, skipping 11, rather than `COMBINED_TOTAL_STEPS`
+  shrinking just for that session type). This also incidentally fixed a
+  pre-existing bug where term-4 and term-5 both showed "step 6 of 6"
+  (term-5 — the conditional bonus round — had no step slot of its own
+  before this).
+- **Screen transitions are now purely horizontal; the term-to-term
+  mascot-bubble resize glitch is fixed.** Two related but separate
+  issues:
+  - Several ROUTE-MOUNT animations (`/entry`'s hero mascot,
+    `/recall-summary` and `/summary`'s own hero-content reveal,
+    `/term-5`'s "entry" stage, `/`'s bottom nav) had their own
+    `initial={{opacity:0, y:8/12}}` vertical offset firing AT THE SAME
+    TIME as the shared layout's own horizontal screen-slide
+    (`(recall)/layout.tsx`'s `AnimatePresence`) — the two competing axes
+    read as "sliding/dropping vertically" even though the primary route
+    transition was already correctly horizontal. All of these are now
+    flattened to a pure opacity fade (no directional offset), so the
+    horizontal slide is the only visible motion during a real screen
+    transition. Scoped narrowly to ROUTE-MOUNT animations only — every
+    WITHIN-screen stage-change animation (a term's own Result/Hint/Reveal
+    reveal, quiz's idle→review reveal) was left untouched, since those
+    were never screen transitions to begin with.
+  - The persistent top `MascotBubble` (rendered once in the shared
+    layout) previously used a STATIC `AnimatePresence` key, so
+    pose/text/dimmed all cross-faded IN PLACE via its own internal
+    layout-FLIP resize — fine for a single prop changing, but
+    term-to-term hops change pose+text+dimmed simultaneously (Result's
+    dimmed bubble → next term's fresh prompt), which visibly glitched (a
+    brief height jump as the FLIP and the nested pose/text
+    `AnimatePresence`s fought for the same frame). Fixed by keying that
+    block on `pathname` instead — since each term route has a distinct
+    pathname even though the main content's own `motionKey` collapses
+    them (see `getMotionKey`'s own doc comment), this forces a full
+    remount + simple opacity crossfade specifically at term boundaries,
+    "a simple animation from one term to another" per the actual ask —
+    while pose/text crossfades WITHIN one term's own stage progression
+    (pathname unchanged) still go through `MascotBubble`'s own smooth
+    internal handling, untouched.
+- **Why box (`WhyExplanation`, `components/why-explanation.tsx`) now uses
+  a brush-stroke `border-image` per outcome color, not a solid border.**
+  Originally a plain solid 2px border (Figma's own reveal-sheet frame,
+  node `14036:14642`, actually still shows a clean border on the Why box
+  even though "What I heard:" right above it in the same frame uses the
+  brush texture) — Evelyn asked for the brush treatment here too,
+  superseding that frame. Each variant has its own dedicated asset
+  (`green-brush-box.svg`/`coral-brush-box.svg`/`purple-brush-box.svg`,
+  all supplied by Evelyn, not invented/approximated with a CSS filter)
+  rather than reusing `HighlightCard`'s own `picture-this-box.svg` (a
+  different-sized asset, and this box needs 3 outcome colors, not
+  `HighlightCard`'s single fixed purple).
+  - `borderImageSlice` is **`"40"`**, not a smaller value — each asset's
+    own path data confirms its rounded-corner curve spans ~38.4 SVG units
+    (measured directly off the path's own corner-to-straight-edge
+    transition point, not eyeballed); an earlier pass here used `"20"`
+    (copied from `HighlightCard`'s own `picture-this-box.svg` value
+    without re-measuring for this differently-proportioned asset), which
+    sliced through the MIDDLE of the corner arc instead of past its end —
+    the leftover curve fragment landed in the stretched edge strip,
+    visible as a stray line down the left edge once that strip was
+    stretched much taller than its ~77px source sliver.
+  - `reveal`'s own box fill is **`bg-brand-on-bold`**, not
+    `bg-background-scrim` (an earlier pass here) — `background-scrim` is
+    a 50%-alpha token (meant for dimming an overlay, not filling a card),
+    so it never visually matched the reveal asset's own opaque baked
+    fill: the border-image's corner/edge slices necessarily carry a thin
+    strip of that baked fill alongside the visible brush stroke (a
+    hand-drawn stroke doesn't have a perfectly crisp inner edge), and
+    against the translucent scrim that strip read as a visible dark ring
+    between the stroke and the box content. Evelyn re-exported
+    `purple-brush-box.svg` with a solid (non-translucent) fill
+    specifically to fix this and gave the exact color to use (`#16171c`)
+    rather than approximating it against an existing token —
+    `--color-brand-on-bold` (`globals.css`) was updated to that exact
+    value and reused here, since that slot existed but was otherwise
+    unused anywhere in the app (safe to repoint, no raw hex added to the
+    component itself). `correct`/`incorrect` never had this problem —
+    their own bg tokens (`green`/`coral-on-bold`) already were exact
+    opaque matches for their own assets' baked fill colors.
+  - Padding between the Why box and the bottom sheet's title row is
+    **`mt-5` (+20px), on the 5 term pages only** — `/quiz`'s own Why box
+    wrapper (`px-7 pt-3`) is untouched, it already had the right spacing
+    per Evelyn's own note ("the pre step has a good padding").
+  - **Gotcha hit while debugging this:** a stale Turbopack cache served
+    the OLD `--color-brand-on-bold` value even after the source file was
+    edited and `next build`/`tsc` both passed clean — confirmed via a
+    direct `curl` of the compiled CSS chunk (still showed the old hex)
+    before concluding it was a caching issue, not a code bug. Fixed the
+    same way this file's own "Good to know" gotcha already prescribes:
+    kill the dev server, `rm -rf .next`, restart via `preview_start`.
+- **Bottom sheets across `/quiz` and all 5 terms now have a consistent
+  `z-20`.** Every term's own Result/Hint/Wrong/Reveal sheet and
+  `/quiz`'s own review-stage sheet previously had NO explicit z-index
+  (relying purely on DOM order), unlike `SkipConfirmSheet`/
+  `ExitConfirmSheet` which already had `z-20`. Matched them to the same
+  value so an expanded sheet (e.g. the Why box growing the sheet taller)
+  always renders above surrounding screen content instead of DOM-order
+  stacking quirks.
+- **"Try again" → "Try weak terms," on `/recall-summary` and
+  `/summary`'s full variant only** (the no-recall/simplified variant's
+  own "Try voice" is untouched). Copy-only change — the underlying retry
+  logic (full replay via the entry fork) is unchanged; no filtering to
+  weak terms yet. Button layout is now a **full-width vertical stack**
+  ("Try weak terms" on top, Continue/Claim XP below), not the equal-width
+  side-by-side row first attempted — measured directly (canvas text
+  metrics, not eyeballed) that "Try weak terms" at Continue's own
+  21px/bold type genuinely doesn't fit an equal half-width share even at
+  this app's full 404px content width (~159px of text, ~121px
+  available), so the original Figma reference's own single-line
+  equal-width render (nodes `13900:24948`/`26505`) isn't physically
+  achievable at this button's real constrained width. Evelyn's follow-up
+  reference (nodes `14050:23562`/`14050:23647`) supersedes it with the
+  stacked layout instead.
+- **"Checking it" now shows the same icon regardless of modality.** Voice
+  mode previously showed `knowie-listening.svg` and text-fallback showed
+  `knowie-reading.svg` — two different icons for the same state. Both now
+  use the new **`CheckingItIcon`** (`components/checking-it-icon.tsx`),
+  which crops `public/images/checking-it-mic.svg` down to just its
+  circle+eyes region (the asset actually bakes a purple circle + eyes +
+  "Checking it"/"Give me a second" text together as one flattened Figma
+  dev-mode composite, 133×180 viewBox — the circle+eyes occupy the top
+  120px, the text fills the remaining 60px below; only the top region is
+  shown here, since the real, tokenized "Checking it"/"Give me a second"
+  text already renders separately alongside this icon everywhere it's
+  used, so showing the asset's own baked copy too would duplicate it).
+  Used by all 5 terms' own inline voice-mode circle AND the shared
+  `CheckingIndicator` (`components/mic-status-indicator.tsx`,
+  text-fallback's own Sending/Checking markup) — same asset, same
+  component, one shared replacement for both. The persistent TOP
+  BUBBLE'S own separate pose logic (still swapping "listening"/"reading"
+  for voice/text on Result/Hint/Reveal screens) is unrelated and
+  untouched by this.
 
 Shared infrastructure (all under `src/`):
 - `lib/recall-flow-context.tsx` also exports **`getEntryForkRoute(termOutcomes)`**
@@ -1239,8 +1415,10 @@ From the spec's "Constraints — do NOT build" section:
   - blazing-summary-with-recall.svg
   - blazing-summary-without-recall.svg.svg *(yes, doubled extension — that's the real filename on disk, not a typo to fix)*
   - checking-it-mic.svg
+  - coral-brush-box.svg
   - correct-answer-icon.svg
   - disabled-mic.svg
+  - green-brush-box.svg
   - hearing-back-mic.svg
   - idle-mic.svg
   - incorrect-answer-icon.svg
@@ -1271,6 +1449,7 @@ From the spec's "Constraints — do NOT build" section:
   - per-term-summary-on-with-hint.svg
   - per-term-summary-on-wrong.svg *(delivered but intentionally unused — no `TermOutcome` maps to "wrong" as a final state)*
   - per-term-summary-on-your-own.svg
+  - purple-brush-box.svg
   - recall-summary-with-recall.svg
   - recording-mic.svg
   - revealed-answer-icon.svg
