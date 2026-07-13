@@ -126,6 +126,18 @@ export default function QuizPage() {
           </div>
         </motion.div>
 
+        {/* Invisible spacer matching idle stage's own BottomCta height
+            (144px, measured) — the result sheet below is `absolute`
+            (out of flow) so it doesn't reserve any space on its own,
+            unlike idle's BottomCta which is a real flex sibling. Without
+            this, the button row's flex-1 centers over the FULL
+            remaining height here instead of idle's shorter
+            (height-minus-BottomCta) one, making the buttons visibly
+            jump down the moment the answer is graded. This reserves the
+            same space so the centering math matches and the buttons
+            stay exactly where they were. */}
+        <div className="h-[144px] shrink-0" aria-hidden />
+
         <motion.div
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
