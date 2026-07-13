@@ -18,6 +18,8 @@ import {
   useSetMicPermissionGranted,
 } from "@/lib/recall-flow-context";
 import { gentle } from "@/lib/motion";
+import { useScrollThumb } from "@/lib/use-scroll-thumb";
+import { ScrollThumbIndicator } from "@/components/scroll-thumb-indicator";
 
 /**
  * First-encounter entry screen (SPEC.md §2A; Figma node 13900:26392).
@@ -61,15 +63,20 @@ export default function EntryScreen() {
   // hero art above), not the shared bubble block — clear it so a leftover
   // value from a previous confidence/term screen doesn't render here.
   useMascotBubble(null);
+  const { ref: scrollRef, thumb, measure } = useScrollThumb<HTMLDivElement>();
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div
-        className={`flex min-h-0 flex-1 flex-col transition-[filter] duration-[180ms] ease-out ${
+        className={`relative flex min-h-0 flex-1 flex-col transition-[filter] duration-[180ms] ease-out ${
           permissionOpen ? "blur-[10px]" : ""
         }`}
       >
-        <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-5 pt-[42px]">
+        <div
+          ref={scrollRef}
+          onScroll={measure}
+          className="no-scrollbar flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-5 pt-[42px]"
+        >
           <div className="relative flex flex-col items-center">
             <div
               aria-hidden
@@ -117,6 +124,7 @@ export default function EntryScreen() {
             </HighlightCard>
           </div>
         </div>
+        <ScrollThumbIndicator thumb={thumb} />
 
         {/* "Type instead" removed per feedback.md — this fork now only
             offers "Let's go!" (voice-first) and "Maybe later" (exit); a

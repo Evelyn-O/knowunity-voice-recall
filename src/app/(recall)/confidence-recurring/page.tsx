@@ -7,17 +7,16 @@ import { HighlightCard } from "@/components/highlight-card";
 import { PrimaryButton, SelectableButton, TextLinkButton } from "@/components/buttons";
 import {
   COMBINED_TOTAL_STEPS,
+  CONFIDENCE_OPTIONS as OPTIONS,
   CONFIDENCE_STEP,
+  confidenceLevelForOption,
   useMascotBubble,
   useRecallStep,
   useRequestExit,
+  useSetConfidenceLevel,
 } from "@/lib/recall-flow-context";
-
-const OPTIONS = [
-  "Very confident!",
-  "Somewhat, I think I got it",
-  "So so, but I’m gonna try",
-] as const;
+import { useScrollThumb } from "@/lib/use-scroll-thumb";
+import { ScrollThumbIndicator } from "@/components/scroll-thumb-indicator";
 
 const DEFAULT_PROMPT =
   "We’re about to test what you’ve learned in your own words, before we get started, how confident do you feel?";
@@ -52,6 +51,8 @@ export default function ConfidenceRecurringPage() {
   // sheet instead of navigating directly — its "Leave" (owned by
   // (recall)/layout.tsx) is what actually routes to /streak.
   const requestExit = useRequestExit();
+  const setConfidenceLevel = useSetConfidenceLevel();
+  const { ref: scrollRef, thumb, measure } = useScrollThumb<HTMLDivElement>();
 
   // Reuses CONFIDENCE_STEP's own slot rather than getting a new one — a
   // returning student never sees /entry, so the bar deliberately jumps
@@ -65,12 +66,19 @@ export default function ConfidenceRecurringPage() {
   });
 
   function handleLetsGo() {
+    // Continue is disabled until `selected` is set — the assertion just
+    // satisfies TypeScript, this branch can't fire with it still null.
+    setConfidenceLevel(confidenceLevelForOption(selected!));
     router.push("/term-1");
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-4 pt-2">
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div
+        ref={scrollRef}
+        onScroll={measure}
+        className="no-scrollbar flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-4 pt-2"
+      >
         <div className="flex w-full flex-col items-center gap-5">
           <HighlightCard eyebrow="Picture this:" variant="definition">
             You&apos;re teaching a friend who missed class, 4 terms for the
@@ -90,6 +98,7 @@ export default function ConfidenceRecurringPage() {
           </div>
         </div>
       </div>
+      <ScrollThumbIndicator thumb={thumb} />
 
       {/* Skip icon-button + "Type instead" link removed per feedback.md —
           matches the first-encounter fork's own "Let's go!" + "Maybe

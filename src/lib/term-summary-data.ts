@@ -1,4 +1,4 @@
-import type { TermId, TermOutcome } from "@/lib/recall-flow-context";
+import type { ConfidenceLevel, TermId, TermOutcome } from "@/lib/recall-flow-context";
 
 /**
  * Per-term title + caption for the Recall summary screen (Figma node
@@ -129,4 +129,93 @@ export function getTermSummaryCaption(
     return COMPARISON_CAPTION[previousOutcome] ?? TERM_SUMMARY[termId].captions[outcome]!;
   }
   return TERM_SUMMARY[termId].captions[outcome] ?? FALLBACK_CAPTION[outcome];
+}
+
+/**
+ * /recall-summary's header (Figma node 14050:23562/13900:24948 — title
+ * node 14050:23574, body node 14050:23575). Chosen by crossing the
+ * session's confidence-tap bucket against a single outcome bucket derived
+ * from EVERY attempted term's own real outcome — not a numeric/percentage
+ * score. "Right" only if every attempted term was unaided; otherwise the
+ * worst category present wins (revealed/skipped beats hinted beats
+ * unaided) — same worst-case-wins pattern already used elsewhere in this
+ * app for term-5's own trigger rule (see recall-flow-context.tsx), not a
+ * new kind of collapsing invented for this screen. Skipped is folded into
+ * "revealed" per this task's own instruction — a term the student never
+ * attempted counts as a miss the same way a fully-revealed one does.
+ *
+ * The "with a hint" row is Claude-drafted to match the tone of Evelyn's
+ * confirmed originals, not confirmed copy — flag for her review before
+ * treating as final. Every other row is her exact wording.
+ *
+ * The task's spec also describes a conditional per-term source line
+ * ("[Term] is worth another look in [source]") for non-"right" outcomes,
+ * used instead of the generic review line when a source exists for that
+ * term. No such per-term source field exists in this content model
+ * (TERM_SUMMARY above has no `source`, only free-text captions) — rather
+ * than invent placeholder source names, this always uses the generic line.
+ * Flagging the gap rather than fabricating sources, per this task's own
+ * instruction.
+ */
+const REVIEW_SUGGESTION =
+  "Give the material a quick review and come back — you’ve got this.";
+
+type SummaryOutcomeBucket = "right" | "hinted" | "revealed";
+
+type SummaryHeaderCopy = { title: string; body: string };
+
+export const SUMMARY_HEADER_COPY: Record<
+  ConfidenceLevel,
+  Record<SummaryOutcomeBucket, SummaryHeaderCopy>
+> = {
+  confident: {
+    right: {
+      title: "You knew you had this",
+      body: "And you did. That’s the kind of gut check that’s actually worth trusting.",
+    },
+    hinted: {
+      // DRAFT — Claude-authored, not confirmed by Evelyn. See doc comment above.
+      title: "Hinted and amazed!",
+      body: `You were sure going in, and a small hint closed the gap. That’s still worth a quick review before the exam. ${REVIEW_SUGGESTION}`,
+    },
+    revealed: {
+      title: "Good thing we checked.",
+      body: `A few of these took more digging than you expected — that’s exactly what this step is for, catching it before the exam does. ${REVIEW_SUGGESTION}`,
+    },
+  },
+  unsure: {
+    right: {
+      title: "You had more in there than you thought.",
+      body: "You went in unsure and nailed it anyway. Trust that a little more next time.",
+    },
+    hinted: {
+      // DRAFT — Claude-authored, not confirmed by Evelyn. See doc comment above.
+      title: "That hint was all you needed!",
+      body: `You weren’t sure, and a nudge got you the rest of the way. That still counts — trust it a little more next time! ${REVIEW_SUGGESTION}`,
+    },
+    revealed: {
+      title: "Your gut was right.",
+      body: `You weren’t sure, and yeah, this one needs more work — but catching that now is the actual win. ${REVIEW_SUGGESTION}`,
+    },
+  },
+};
+
+/** Worst-case-wins across every attempted term this session — "right" only
+ * if none needed help at all. Only meaningful when termOutcomes is
+ * non-empty (guaranteed on /recall-summary, which is only reached when
+ * recallAttempted). */
+function summaryOutcomeBucket(
+  termOutcomes: Partial<Record<TermId, TermOutcome>>
+): SummaryOutcomeBucket {
+  const outcomes = Object.values(termOutcomes);
+  if (outcomes.some((o) => o === "revealed" || o === "skipped")) return "revealed";
+  if (outcomes.some((o) => o === "hinted")) return "hinted";
+  return "right";
+}
+
+export function getSummaryHeaderCopy(
+  confidenceLevel: ConfidenceLevel,
+  termOutcomes: Partial<Record<TermId, TermOutcome>>
+): SummaryHeaderCopy {
+  return SUMMARY_HEADER_COPY[confidenceLevel][summaryOutcomeBucket(termOutcomes)];
 }

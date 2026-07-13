@@ -13,6 +13,8 @@ import {
   useRecallStep,
 } from "@/lib/recall-flow-context";
 import { gentle, snappy } from "@/lib/motion";
+import { useScrollThumb } from "@/lib/use-scroll-thumb";
+import { ScrollThumbIndicator } from "@/components/scroll-thumb-indicator";
 
 /**
  * Streak reveal (Figma nodes 13900:26427 "completed" path / 13900:26466
@@ -49,6 +51,13 @@ export default function StreakPage() {
   const router = useRouter();
   const recallAttempted = useRecallAttempted();
   const [revealed, setRevealed] = useState(false);
+  // Set the instant the flame icon's own landing animation completes (see
+  // onAnimationComplete below) — confetti is paired to fire at that exact
+  // moment, not on the generic `revealed` timer the day-circle stagger
+  // uses, so the burst genuinely reads as the icon's "landing impact"
+  // rather than an independently-timed effect.
+  const [iconLanded, setIconLanded] = useState(false);
+  const { ref: scrollRef, thumb, measure } = useScrollThumb<HTMLDivElement>();
 
   const onExit = useCallback(() => router.back(), [router]);
   useRecallStep({ currentStep: null, totalSteps: 6, onExit });
@@ -66,22 +75,38 @@ export default function StreakPage() {
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-coral-bold">
-      <ConfettiBurst play={revealed} />
+      <ConfettiBurst play={iconLanded} />
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-7 overflow-y-auto px-5 py-10">
+      <div
+        ref={scrollRef}
+        onScroll={measure}
+        className="no-scrollbar flex min-h-0 flex-1 flex-col items-center justify-center gap-7 overflow-y-auto px-5 py-10"
+      >
         <motion.div
-          initial={{ opacity: 0, scale: 0.85 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={gentle}
           className="flex flex-col items-center gap-4"
         >
           {/* Flame streak icon (public/images/streak.svg, natively
-              142x178 — matches Figma's slot 13900:26440, 141x177). */}
-          <img
+              142x178 — matches Figma's slot 13900:26440, 141x177).
+              A deliberate landing animation, not a bug to remove: falls
+              from above (y:-80) and settles with `snappy`'s own spring
+              bounce (stiffness 400 / damping 28, a damping ratio of ~0.7 —
+              genuinely underdamped on purpose here, unlike every other
+              entrance in this app, which is why this is its own nested
+              motion.img instead of reusing the parent block's plain fade).
+              onAnimationComplete fires the paired confetti burst at the
+              exact moment it lands. */}
+          <motion.img
             src="/images/streak.svg"
             alt=""
             aria-hidden
             className="h-[141px] w-[141px]"
+            initial={{ opacity: 0, y: -80, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={snappy}
+            onAnimationComplete={() => setIconLanded(true)}
           />
 
           <div className="flex flex-col items-center">
@@ -136,6 +161,7 @@ export default function StreakPage() {
           })}
         </motion.div>
       </div>
+      <ScrollThumbIndicator thumb={thumb} />
 
       <BottomCta className="flex gap-2">
         {/* Hand-rolled, not SecondaryButton — see recall-summary/page.tsx

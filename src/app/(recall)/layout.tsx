@@ -146,7 +146,18 @@ function RecallChrome({ children }: { children: React.ReactNode }) {
             crossfades *within* an already-mounted block are handled inside
             MascotBubble itself; this only smooths the block appearing or
             disappearing as a whole. */}
-        <AnimatePresence>
+        {/* mode="popLayout" — without it, this is the one AnimatePresence
+            in the app that left the exiting bubble in normal document
+            flow alongside the entering one, so both briefly stacked and
+            pushed the mic UI below down, then snapped back up once the
+            old one unmounted (confirmed via document.getAnimations() at
+            the moment of a term-to-term hop: the exit+enter opacity
+            animations genuinely overlap in time). popLayout pulls the
+            exiting element out of flow (position: absolute) the instant
+            it starts exiting, matching every other AnimatePresence in
+            this codebase (mascot-bubble.tsx's own two, and the main
+            content's own AnimatePresence right below this one). */}
+        <AnimatePresence mode="popLayout">
           {mascot && (
             <motion.div
               // Keyed by pathname, not a static string — this makes the

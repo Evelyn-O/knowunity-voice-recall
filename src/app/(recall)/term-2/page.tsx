@@ -39,6 +39,8 @@ import {
 } from "@/lib/recall-flow-context";
 import { useTermAttemptState } from "@/lib/term-attempt-state";
 import { gentle, sheet, snappy } from "@/lib/motion";
+import { useScrollThumb } from "@/lib/use-scroll-thumb";
+import { ScrollThumbIndicator } from "@/components/scroll-thumb-indicator";
 
 const PROMPT = "Next: what does a time signature tell you?";
 const PARTIAL_REPLY = "You are almost there! Take your time and try again.";
@@ -239,6 +241,7 @@ export default function TermTwoPage() {
   const [micPermissionPromptOpen, setMicPermissionPromptOpen] = useState(false);
   const lastInputMode = useLastInputMode();
   const setLastInputMode = useSetLastInputMode();
+  const { ref: scrollRef, thumb, measure } = useScrollThumb<HTMLDivElement>();
 
   // Shared per-term attempt state (lib/term-attempt-state.ts) — attempt/
   // outcome/inputMode/typedAnswer all live here now instead of local
@@ -507,14 +510,19 @@ export default function TermTwoPage() {
 
   if (stage === "hint") {
     return (
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pt-5">
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div
+          ref={scrollRef}
+          onScroll={measure}
+          className="no-scrollbar flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pt-5"
+        >
           {/* Both bubbles below the (already-dimmed, persistent) question
               dim in turn as the thread grows — only the newest line (the
               hint) stays at full opacity, matching the Figma frame. */}
           <MascotBubble pose="approving" alt="Noe, approving" text={PARTIAL_REPLY} dimmed />
           <MascotBubble pose="giggling" alt="Noe, giggling" text={HINT_1} />
         </div>
+        <ScrollThumbIndicator thumb={thumb} />
 
         {/* Hint reveals inline in the thread, sheet dismisses, bottom bar
             becomes "Try again" (primary) + "Skip to next question" (link)
@@ -789,8 +797,12 @@ export default function TermTwoPage() {
   const micDisabled = stage === "sending" || stage === "checking";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div
+        ref={scrollRef}
+        onScroll={measure}
+        className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-4"
+      >
         <div className="flex flex-1 flex-col items-center pt-[60px]">
           {/* Instant state swap, deliberately — no crossfade/layout animation
               between mic states (same fix already applied in term-1: it
@@ -931,6 +943,7 @@ export default function TermTwoPage() {
           </div>
         </div>
       </div>
+      <ScrollThumbIndicator thumb={thumb} />
 
       <MicLoopBottomBar
         disabled={stage === "recording" || stage === "sending" || stage === "checking"}

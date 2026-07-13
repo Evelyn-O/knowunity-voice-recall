@@ -146,6 +146,37 @@ export type TermId =
   | "syncopation"
   | "cadence";
 
+/**
+ * The confidence-tap's own 2-tier bucket, used by /recall-summary's header
+ * copy matrix (term-summary-data.ts's SUMMARY_HEADER_COPY). The tap itself
+ * offers 3 options (see CONFIDENCE_OPTIONS below) — confidenceLevelForOption
+ * collapses those down to this.
+ */
+export type ConfidenceLevel = "confident" | "unsure";
+
+/** Verbatim confidence-tap option labels, shared by /confidence and
+ * /confidence-recurring so both screens and confidenceLevelForOption stay
+ * in sync on the exact strings. */
+export const CONFIDENCE_OPTIONS = [
+  "Very confident!",
+  "Somewhat, I think I got it",
+  "So so, but I’m gonna try",
+] as const;
+export type ConfidenceOption = (typeof CONFIDENCE_OPTIONS)[number];
+
+/**
+ * Collapses the 3-tier confidence-tap pick to the 2-tier confident/unsure
+ * bucket the summary-header copy matrix keys off. Only "Very confident!" is
+ * genuinely unhedged; "Somewhat, I think I got it" and "So so, but I'm
+ * gonna try" both hedge in their own wording, so both bucket as unsure.
+ * This 3-to-2 mapping wasn't specified by the copy-matrix task (which only
+ * ever names "Confident"/"Unsure") — flag with Evelyn before treating as
+ * final if the middle option ever needs its own tier.
+ */
+export function confidenceLevelForOption(option: ConfidenceOption): ConfidenceLevel {
+  return option === "Very confident!" ? "confident" : "unsure";
+}
+
 /** The 4 base terms, fixed order, never including cadence (conditional,
  * 5th round) — the set fillRemainingTermsAsSkipped backfills against. */
 export const BASE_TERM_IDS: readonly TermId[] = [
@@ -249,6 +280,7 @@ type RecallChromeValue = {
   recallAttempted: boolean;
   micPermissionGranted: boolean;
   lastInputMode: InputMode | null;
+  confidenceLevel: ConfidenceLevel | null;
   exitConfirmOpen: boolean;
 };
 
@@ -264,6 +296,7 @@ const defaultValue: RecallChromeValue = {
   recallAttempted: false,
   micPermissionGranted: false,
   lastInputMode: null,
+  confidenceLevel: null,
   exitConfirmOpen: false,
 };
 
@@ -276,6 +309,7 @@ const RecallChromeContext = createContext<{
   fillRemainingTermsAsSkipped: () => void;
   setMicPermissionGranted: (granted: boolean) => void;
   setLastInputMode: (mode: InputMode) => void;
+  setConfidenceLevel: (level: ConfidenceLevel) => void;
   resetRecallSession: () => void;
   requestExit: () => void;
   cancelExit: () => void;
@@ -348,9 +382,20 @@ export function RecallChromeProvider({ children }: { children: React.ReactNode }
     setValue((prev) => ({ ...prev, lastInputMode: mode }));
   }, []);
 
+  // Set once by /confidence or /confidence-recurring right before routing
+  // to /term-1 — the confidence tap itself never persists past that click
+  // otherwise, and /recall-summary's header copy needs it afterward.
+  const setConfidenceLevel = useCallback((level: ConfidenceLevel) => {
+    setValue((prev) => ({ ...prev, confidenceLevel: level }));
+  }, []);
+
   // Deliberately omits micPermissionGranted — see the doc comment above.
   // Snapshots the outgoing termOutcomes as previousSessionOutcomes before
   // clearing, so /recall-summary can compare the new session against it.
+  // confidenceLevel resets to null here too (same as lastInputMode) — a
+  // fresh "Try again" session re-asks confidence via /confidence-recurring
+  // before term-1 is reachable again, so the prior session's pick must not
+  // leak into the new one's summary header.
   const resetRecallSession = useCallback(() => {
     setValue((prev) => ({
       ...prev,
@@ -359,6 +404,7 @@ export function RecallChromeProvider({ children }: { children: React.ReactNode }
       voiceUsedThisSession: false,
       recallAttempted: false,
       lastInputMode: null,
+      confidenceLevel: null,
     }));
   }, []);
 
@@ -381,6 +427,7 @@ export function RecallChromeProvider({ children }: { children: React.ReactNode }
         fillRemainingTermsAsSkipped,
         setMicPermissionGranted,
         setLastInputMode,
+        setConfidenceLevel,
         resetRecallSession,
         requestExit,
         cancelExit,
@@ -560,6 +607,21 @@ export function useLastInputMode() {
  * needs to set the mode the upcoming /term-1 visit starts in). */
 export function useSetLastInputMode() {
   return useRecallChromeContext().setLastInputMode;
+}
+
+/** Read-only: the confidence-tap bucket set at the start of this session
+ * (null before either confidence screen has been completed, or after a
+ * reset). /recall-summary's header copy reads this alongside termOutcomes
+ * to pick which of the confident/unsure × right/hinted/revealed copy
+ * blocks to show. */
+export function useConfidenceLevel() {
+  return useRecallChromeContext().value.confidenceLevel;
+}
+
+/** Returns a stable setter — called once by /confidence and
+ * /confidence-recurring right before routing to /term-1. */
+export function useSetConfidenceLevel() {
+  return useRecallChromeContext().setConfidenceLevel;
 }
 
 /** Returns a stable function a "Try again" handler calls once, right

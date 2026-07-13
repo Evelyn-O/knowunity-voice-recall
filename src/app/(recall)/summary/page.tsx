@@ -17,7 +17,22 @@ import {
   useTermOutcomes,
 } from "@/lib/recall-flow-context";
 import { RECALL_XP_EARNED } from "@/lib/term-summary-data";
-import { gentle, snappy } from "@/lib/motion";
+import { gentle, snappy, soft } from "@/lib/motion";
+import { useScrollThumb } from "@/lib/use-scroll-thumb";
+import { ScrollThumbIndicator } from "@/components/scroll-thumb-indicator";
+
+/** The 4/3 stat-tile stagger-in reveal — fades in and rises 12px into
+ * place. Needs its own explicit `transition` (baked into the "visible"
+ * variant, not left to Motion's default): with none specified, Motion
+ * falls back to its default spring (stiffness 100 / damping 10, a
+ * damping ratio of ~0.5 — clearly underdamped), which visibly overshoots
+ * past y:0 and settles back — the "drops down, bounces back up" glitch.
+ * `soft` (a duration-based easing, not a spring) keeps the same rise/fade
+ * motion with zero overshoot. */
+const STAT_TILE_VARIANTS = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: soft },
+};
 
 /**
  * Final "You did it!" stats screen — two Figma-distinct variants, chosen
@@ -106,11 +121,14 @@ function StatImageWithValue({
     <div className="relative w-full">
       <img src={src} alt="" aria-hidden className="block w-full h-auto" />
       <div className="absolute left-[47%] top-[44%] h-[36%] w-[50%] flex items-center justify-center bg-background-page">
-        {/* font-sans (Inter Variable), not font-display (Bricolage) — the
-            baked box images use Greed Condensed Heavy, which per this
-            project's own font substitution falls back to Inter Variable,
-            not Bricolage. Matches SCORE/BLAZING's baked glyphs exactly. */}
-        <span className={`font-sans text-lg font-black tracking-wide ${accentClass}`}>
+        {/* font-display (Bricolage), not font-sans (Inter) — confirmed by
+            comparing against the baked SCORE/BLAZING glyphs (condensed,
+            heavy weight): Greed Condensed Heavy is this app's display/
+            headline substitute (Bricolage Grotesque), not the body font.
+            An earlier version of this component used font-sans on the
+            assumption Greed Condensed Heavy fell back to Inter Variable —
+            confirmed wrong by screenshot, corrected here. */}
+        <span className={`font-display text-lg font-black tracking-wide ${accentClass}`}>
           {value}
         </span>
       </div>
@@ -124,6 +142,7 @@ export default function SummaryPage() {
   const recallAttempted = useRecallAttempted();
   const resetRecallSession = useResetRecallSession();
   const [revealed, setRevealed] = useState(false);
+  const { ref: scrollRef, thumb, measure } = useScrollThumb<HTMLDivElement>();
 
   const onExit = useCallback(() => router.back(), [router]);
   useRecallStep({ currentStep: null, totalSteps: 6, onExit });
@@ -196,7 +215,11 @@ export default function SummaryPage() {
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
       <ConfettiBurst play={revealed} />
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-8 overflow-y-auto px-5 py-6 text-center">
+      <div
+        ref={scrollRef}
+        onScroll={measure}
+        className="no-scrollbar flex min-h-0 flex-1 flex-col items-center justify-center gap-8 overflow-y-auto px-5 py-6 text-center"
+      >
         {/* Pure opacity fade, no y-offset — fires on route mount, and a
             vertical offset here competes with the shared layout's own
             horizontal screen-transition slide instead of complementing it. */}
@@ -235,17 +258,17 @@ export default function SummaryPage() {
             variants={{ visible: { transition: { staggerChildren: 0.09, delayChildren: 0.15 } } }}
             className="grid w-full max-w-[370px] grid-cols-2 gap-3"
           >
-            <motion.div variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}>
+            <motion.div variants={STAT_TILE_VARIANTS}>
               <StatImageWithValue
                 src="/images/xp-summary-with-recall.svg"
                 accentClass="text-blue-bold"
                 value={<CountUpNumber value={stats.xp} />}
               />
             </motion.div>
-            <motion.div variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}>
+            <motion.div variants={STAT_TILE_VARIANTS}>
               <StatImage src="/images/score-summary-with-recall.svg" />
             </motion.div>
-            <motion.div variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}>
+            <motion.div variants={STAT_TILE_VARIANTS}>
               <StatImageWithValue
                 src="/images/recall-summary-with-recall.svg"
                 accentClass="text-magenta-bold"
@@ -257,7 +280,7 @@ export default function SummaryPage() {
                 }
               />
             </motion.div>
-            <motion.div variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}>
+            <motion.div variants={STAT_TILE_VARIANTS}>
               <StatImage src="/images/blazing-summary-with-recall.svg" />
             </motion.div>
           </motion.div>
@@ -273,25 +296,26 @@ export default function SummaryPage() {
           >
             <motion.div
               className="flex-1"
-              variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
+              variants={STAT_TILE_VARIANTS}
             >
               <StatImage src="/images/xp-summary-without-recall.svg.svg" />
             </motion.div>
             <motion.div
               className="flex-1"
-              variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
+              variants={STAT_TILE_VARIANTS}
             >
               <StatImage src="/images/score-summary-without-recall.svg" />
             </motion.div>
             <motion.div
               className="flex-1"
-              variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
+              variants={STAT_TILE_VARIANTS}
             >
               <StatImage src="/images/blazing-summary-without-recall.svg.svg" />
             </motion.div>
           </motion.div>
         )}
       </div>
+      <ScrollThumbIndicator thumb={thumb} />
 
       <BottomCta className="flex flex-col gap-2">
         {isFullVariant ? (

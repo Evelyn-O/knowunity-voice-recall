@@ -6,17 +6,16 @@ import { BottomCta } from "@/components/bottom-cta";
 import { PrimaryButton, SelectableButton } from "@/components/buttons";
 import {
   COMBINED_TOTAL_STEPS,
+  CONFIDENCE_OPTIONS as OPTIONS,
   CONFIDENCE_STEP,
+  confidenceLevelForOption,
   useMascotBubble,
   useRecallStep,
   useRequestExit,
+  useSetConfidenceLevel,
 } from "@/lib/recall-flow-context";
-
-const OPTIONS = [
-  "Very confident!",
-  "Somewhat, I think I got it",
-  "So so, but I’m gonna try",
-] as const;
+import { useScrollThumb } from "@/lib/use-scroll-thumb";
+import { ScrollThumbIndicator } from "@/components/scroll-thumb-indicator";
 
 const DEFAULT_PROMPT =
   "We’re about to test what you’ve learned in your own words, before we get started, how confident do you feel?";
@@ -36,6 +35,8 @@ function ConfidenceScreen() {
   );
 
   const requestExit = useRequestExit();
+  const setConfidenceLevel = useSetConfidenceLevel();
+  const { ref: scrollRef, thumb, measure } = useScrollThumb<HTMLDivElement>();
 
   useRecallStep({ currentStep: CONFIDENCE_STEP, totalSteps: COMBINED_TOTAL_STEPS, onExit: requestExit });
   useMascotBubble({
@@ -45,12 +46,19 @@ function ConfidenceScreen() {
   });
 
   function handleContinue() {
+    // Continue is disabled until `selected` is set — the assertion just
+    // satisfies TypeScript, this branch can't fire with it still null.
+    setConfidenceLevel(confidenceLevelForOption(selected!));
     router.push(`/term-1?mode=${mode}`);
   }
 
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
+    <div className="relative flex flex-1 flex-col">
+      <div
+        ref={scrollRef}
+        onScroll={measure}
+        className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-4"
+      >
         <div className="flex flex-1 flex-col items-center justify-center gap-3">
           {OPTIONS.map((option) => (
             <SelectableButton
@@ -63,6 +71,7 @@ function ConfidenceScreen() {
           ))}
         </div>
       </div>
+      <ScrollThumbIndicator thumb={thumb} />
 
       <BottomCta>
         <PrimaryButton disabled={!selected} onClick={handleContinue}>

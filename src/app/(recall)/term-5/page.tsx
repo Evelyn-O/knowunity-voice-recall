@@ -40,6 +40,8 @@ import {
 } from "@/lib/recall-flow-context";
 import { useTermAttemptState } from "@/lib/term-attempt-state";
 import { gentle, sheet, snappy } from "@/lib/motion";
+import { useScrollThumb } from "@/lib/use-scroll-thumb";
+import { ScrollThumbIndicator } from "@/components/scroll-thumb-indicator";
 
 const ENTRY_LINE = "Woohoo! One more before we wrap up. You are doing great!";
 const PROMPT = "Last one for this set: what's Cadence?";
@@ -220,6 +222,7 @@ export default function TermFivePage() {
   const [micPermissionPromptOpen, setMicPermissionPromptOpen] = useState(false);
   const lastInputMode = useLastInputMode();
   const setLastInputMode = useSetLastInputMode();
+  const { ref: scrollRef, thumb, measure } = useScrollThumb<HTMLDivElement>();
 
   const capturedFramesRef = useRef<number[][]>([]);
   const recordRecallAttempted = useRecordRecallAttempted();
@@ -454,8 +457,12 @@ export default function TermFivePage() {
 
   if (stage === "entry") {
     return (
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-5 pt-16">
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div
+          ref={scrollRef}
+          onScroll={measure}
+          className="no-scrollbar flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-5 pt-16"
+        >
           {/* Pure opacity fade, no y-offset — this stage is the first thing
               shown on routing into /term-5 (a route mount), and a vertical
               offset here competes with the shared layout's own horizontal
@@ -500,6 +507,7 @@ export default function TermFivePage() {
             </motion.div>
           </div>
         </div>
+        <ScrollThumbIndicator thumb={thumb} />
 
         {/* Skip control updated per feedback.md [L] "Skip must not read as
             exiting the whole session" — text link below the primary CTA,
@@ -690,8 +698,12 @@ export default function TermFivePage() {
   const micDisabled = micStage === "sending" || micStage === "checking";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div
+        ref={scrollRef}
+        onScroll={measure}
+        className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-4"
+      >
         <div className="flex flex-1 flex-col items-center pt-[60px]">
           <motion.button
             whileTap={micDisabled ? undefined : { scale: 0.94 }}
@@ -826,6 +838,7 @@ export default function TermFivePage() {
           </div>
         </div>
       </div>
+      <ScrollThumbIndicator thumb={thumb} />
 
       <MicLoopBottomBar
         disabled={micStage === "recording" || micStage === "sending" || micStage === "checking"}

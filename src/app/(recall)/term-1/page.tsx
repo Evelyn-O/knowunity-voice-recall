@@ -38,6 +38,8 @@ import {
 } from "@/lib/recall-flow-context";
 import { useTermAttemptState } from "@/lib/term-attempt-state";
 import { gentle, sheet, snappy } from "@/lib/motion";
+import { useScrollThumb } from "@/lib/use-scroll-thumb";
+import { ScrollThumbIndicator } from "@/components/scroll-thumb-indicator";
 
 const PROMPT = "First one: in your own words, what's a note?";
 const ANSWER = "You got it! A note is a sound with a specific pitch.";
@@ -228,6 +230,7 @@ export default function TermOnePage() {
   const [micPermissionPromptOpen, setMicPermissionPromptOpen] = useState(false);
   const lastInputMode = useLastInputMode();
   const setLastInputMode = useSetLastInputMode();
+  const { ref: scrollRef, thumb, measure } = useScrollThumb<HTMLDivElement>();
 
   // Shared per-term attempt state (lib/term-attempt-state.ts) — term-1 never
   // branches on `outcome`/`attempt` itself (its script is a single unaided
@@ -637,8 +640,12 @@ export default function TermOnePage() {
   const micDisabled = stage === "sending" || stage === "checking";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div
+        ref={scrollRef}
+        onScroll={measure}
+        className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-4"
+      >
         <div className="flex flex-1 flex-col items-center pt-[60px]">
           {/* Instant state swap, deliberately — no crossfade/layout animation
               between mic states (Evelyn: it should read as a state change,
@@ -778,6 +785,7 @@ export default function TermOnePage() {
           </div>
         </div>
       </div>
+      <ScrollThumbIndicator thumb={thumb} />
 
       <MicLoopBottomBar
         disabled={stage === "recording" || stage === "sending" || stage === "checking"}

@@ -39,6 +39,8 @@ import {
 } from "@/lib/recall-flow-context";
 import { useTermAttemptState } from "@/lib/term-attempt-state";
 import { gentle, sheet, snappy } from "@/lib/motion";
+import { useScrollThumb } from "@/lib/use-scroll-thumb";
+import { ScrollThumbIndicator } from "@/components/scroll-thumb-indicator";
 
 const QUESTION = "What's tempo?";
 const PROMPT = `Half way there! ${QUESTION}`;
@@ -289,6 +291,7 @@ export default function TermThreePage() {
   const [micPermissionPromptOpen, setMicPermissionPromptOpen] = useState(false);
   const lastInputMode = useLastInputMode();
   const setLastInputMode = useSetLastInputMode();
+  const { ref: scrollRef, thumb, measure } = useScrollThumb<HTMLDivElement>();
 
   // Shared per-term attempt state (lib/term-attempt-state.ts) — see term-2
   // for the full rationale. promptVariant/mishear stays local, separate
@@ -596,8 +599,12 @@ export default function TermThreePage() {
   if (stage === "hint") {
     const index = Math.min(attempt, HINT_BY_ATTEMPT.length - 1);
     return (
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pt-5">
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div
+          ref={scrollRef}
+          onScroll={measure}
+          className="no-scrollbar flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pt-5"
+        >
           {/* Unlike the wrong-result sheet (where this same card stays at
               normal opacity, node 14030:16666), the hint screen dims it to
               match the surrounding bubble thread (Figma node 14030:16746). */}
@@ -607,6 +614,7 @@ export default function TermThreePage() {
           <MascotBubble pose="approving" alt="Noe, approving" text={WRONG_REPLY_BY_ATTEMPT[index]} dimmed />
           <MascotBubble pose="giggling" alt="Noe, giggling" text={HINT_BY_ATTEMPT[index]} />
         </div>
+        <ScrollThumbIndicator thumb={thumb} />
 
         {/* Hint reveals inline in the thread, sheet dismisses, bottom bar
             becomes "Try again" (primary) + "Skip to next question" (link)
@@ -943,8 +951,12 @@ export default function TermThreePage() {
   const micDisabled = micStage === "sending" || micStage === "checking";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div
+        ref={scrollRef}
+        onScroll={measure}
+        className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-4"
+      >
         <div className="flex flex-1 flex-col items-center pt-[60px]">
           {/* Instant state swap, deliberately — no crossfade/layout animation
               between mic states (same fix already applied in term-1/2: it
@@ -1085,6 +1097,7 @@ export default function TermThreePage() {
           </div>
         </div>
       </div>
+      <ScrollThumbIndicator thumb={thumb} />
 
       <MicLoopBottomBar
         disabled={micStage === "recording" || micStage === "sending" || micStage === "checking"}

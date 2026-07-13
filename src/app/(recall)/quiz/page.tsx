@@ -106,18 +106,20 @@ export default function QuizPage() {
           transition={gentle}
           className="flex flex-1 flex-col items-center justify-center gap-3"
         >
-          <div className="flex gap-3">
+          {/* Same w-full + flex-1/max-w fix as the idle stage's identical
+              button row — see that block's own comment. */}
+          <div className="flex w-full gap-3">
             <button
               type="button"
               disabled
-              className={`relative flex h-[83px] w-[179px] items-center justify-center rounded-[24px] px-5 py-7 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)] ${pillClass("true")}`}
+              className={`relative flex h-[83px] flex-1 max-w-[179px] items-center justify-center rounded-[24px] px-5 py-7 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)] ${pillClass("true")}`}
             >
               <span className="font-display text-[18px] font-medium tracking-[0.18px]">True</span>
             </button>
             <button
               type="button"
               disabled
-              className={`relative flex h-[83px] w-[179px] items-center justify-center rounded-[24px] px-5 py-7 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)] ${pillClass("false")}`}
+              className={`relative flex h-[83px] flex-1 max-w-[179px] items-center justify-center rounded-[24px] px-5 py-7 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)] ${pillClass("false")}`}
             >
               <span className="font-display text-[18px] font-medium tracking-[0.18px]">False</span>
             </button>
@@ -207,13 +209,22 @@ export default function QuizPage() {
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4">
-        <div className="flex gap-3">
+        {/* w-full + flex-1/max-w on the buttons (not a fixed w-[179px] each)
+            — at Figma's own 404.28px canvas width this caps out to the
+            exact same 179.333px buttons, but a fixed pixel width on a
+            narrower real device (the two buttons + gap, 370px, wider than
+            a real ~375px phone's padded content area) overflowed past this
+            container's own px-4, eating into the padding down to ~2.5px a
+            side instead of Figma's 16.586px. flex-1 lets the buttons
+            shrink together on narrower viewports so the edge padding stays
+            correct instead of being eaten by overflow. */}
+        <div className="flex w-full gap-3">
           <motion.button
             type="button"
             whileTap={{ scale: 0.94 }}
             transition={snappy}
             onClick={() => setSelected("true")}
-            className={`relative flex h-[83px] w-[179px] items-center justify-center rounded-[24px] px-5 py-7 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)] ${pillClass("true")}`}
+            className={`relative flex h-[83px] flex-1 max-w-[179px] items-center justify-center rounded-[24px] px-5 py-7 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)] ${pillClass("true")}`}
           >
             <span className="font-display text-[18px] font-medium tracking-[0.18px]">True</span>
           </motion.button>
@@ -222,7 +233,7 @@ export default function QuizPage() {
             whileTap={{ scale: 0.94 }}
             transition={snappy}
             onClick={() => setSelected("false")}
-            className={`relative flex h-[83px] w-[179px] items-center justify-center rounded-[24px] px-5 py-7 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)] ${pillClass("false")}`}
+            className={`relative flex h-[83px] flex-1 max-w-[179px] items-center justify-center rounded-[24px] px-5 py-7 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)] ${pillClass("false")}`}
           >
             <span className="font-display text-[18px] font-medium tracking-[0.18px]">False</span>
           </motion.button>

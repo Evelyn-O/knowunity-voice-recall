@@ -39,6 +39,8 @@ import {
 } from "@/lib/recall-flow-context";
 import { useTermAttemptState } from "@/lib/term-attempt-state";
 import { gentle, sheet, snappy } from "@/lib/motion";
+import { useScrollThumb } from "@/lib/use-scroll-thumb";
+import { ScrollThumbIndicator } from "@/components/scroll-thumb-indicator";
 
 const PROMPT = "We are very close! What's syncopation?";
 // Authored, not sourced: SPEC.md §4 Term 4 flags that no result/hint
@@ -234,6 +236,7 @@ export default function TermFourPage() {
   const [micPermissionPromptOpen, setMicPermissionPromptOpen] = useState(false);
   const lastInputMode = useLastInputMode();
   const setLastInputMode = useSetLastInputMode();
+  const { ref: scrollRef, thumb, measure } = useScrollThumb<HTMLDivElement>();
 
   const capturedFramesRef = useRef<number[][]>([]);
   const recordRecallAttempted = useRecordRecallAttempted();
@@ -632,8 +635,12 @@ export default function TermFourPage() {
   const micDisabled = stage === "sending" || stage === "checking";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div
+        ref={scrollRef}
+        onScroll={measure}
+        className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-4"
+      >
         <div className="flex flex-1 flex-col items-center pt-[60px]">
           <motion.button
             whileTap={micDisabled ? undefined : { scale: 0.94 }}
@@ -768,6 +775,7 @@ export default function TermFourPage() {
           </div>
         </div>
       </div>
+      <ScrollThumbIndicator thumb={thumb} />
 
       <MicLoopBottomBar
         disabled={stage === "recording" || stage === "sending" || stage === "checking"}

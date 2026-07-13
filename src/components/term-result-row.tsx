@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import type { TermOutcome } from "@/lib/recall-flow-context";
+import { soft } from "@/lib/motion";
 
 /**
  * The per-term result row on the Recall summary screen (design.md §4
@@ -47,9 +48,15 @@ const CHIP_CONFIG: Record<
   },
 };
 
+// Needs its own explicit `transition` on the "visible" variant — with none
+// specified, Motion falls back to its default spring (stiffness 100 /
+// damping 10, damping ratio ~0.5, clearly underdamped), which visibly
+// overshoots past y:0 and settles back — the "drops down, bounces back up"
+// glitch. `soft` (duration-based easing, not a spring) keeps the same
+// rise/fade motion with zero overshoot.
 const rowVariants = {
   hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0 },
+  visible: { opacity: 1, y: 0, transition: soft },
 };
 
 export function TermResultRow({

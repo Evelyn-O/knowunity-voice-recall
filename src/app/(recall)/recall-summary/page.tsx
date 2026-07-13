@@ -10,6 +10,7 @@ import { CountUpNumber } from "@/components/count-up-number";
 import { TermResultRow } from "@/components/term-result-row";
 import {
   getEntryForkRoute,
+  useConfidenceLevel,
   useMascotBubble,
   usePreviousSessionOutcomes,
   useRecallAttempted,
@@ -18,12 +19,15 @@ import {
   useTermOutcomes,
 } from "@/lib/recall-flow-context";
 import {
+  getSummaryHeaderCopy,
   getTermSummaryCaption,
   RECALL_XP_EARNED,
   TERM_SUMMARY,
   TERM_SUMMARY_ORDER,
 } from "@/lib/term-summary-data";
 import { gentle, snappy } from "@/lib/motion";
+import { useScrollThumb } from "@/lib/use-scroll-thumb";
+import { ScrollThumbIndicator } from "@/components/scroll-thumb-indicator";
 
 /**
  * Recall summary — per-term results (Figma node 13900:24948, "Recall
@@ -51,6 +55,14 @@ import { gentle, snappy } from "@/lib/motion";
  * `previousSessionOutcomes` (one session back) instead of always pulling
  * the sourced/first-time recommendation — see term-summary-data.ts's own
  * doc comment on getTermSummaryCaption for exactly when that kicks in.
+ *
+ * The header (title + body, right above the per-term rows) is genuinely
+ * dynamic too — crossed from the session's confidence-tap bucket
+ * (useConfidenceLevel, set once by /confidence or /confidence-recurring
+ * right before term-1) against a worst-case-wins outcome bucket derived
+ * from every attempted term's real outcome. See term-summary-data.ts's
+ * getSummaryHeaderCopy doc comment for the full matrix and the two rows
+ * still marked draft/unconfirmed.
  */
 
 export default function RecallSummaryPage() {
@@ -61,6 +73,14 @@ export default function RecallSummaryPage() {
   const xpEarned = recallAttempted ? RECALL_XP_EARNED : 0;
   const resetRecallSession = useResetRecallSession();
   const [revealed, setRevealed] = useState(false);
+  const { ref: scrollRef, thumb, measure } = useScrollThumb<HTMLDivElement>();
+
+  // Guaranteed non-null here: this screen is only reachable through
+  // /confidence or /confidence-recurring, both of which set this before
+  // routing to term-1 — the `?? "confident"` is a type-only fallback for
+  // TypeScript's benefit, not a real path.
+  const confidenceLevel = useConfidenceLevel() ?? "confident";
+  const headerCopy = getSummaryHeaderCopy(confidenceLevel, termOutcomes);
 
   const onExit = useCallback(() => router.back(), [router]);
   useRecallStep({ currentStep: null, totalSteps: 6, onExit });
@@ -101,8 +121,12 @@ export default function RecallSummaryPage() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 pt-2">
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div
+        ref={scrollRef}
+        onScroll={measure}
+        className="no-scrollbar flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 pt-2"
+      >
         {/* Pure opacity fade, no y-offset — fires on route mount, and a
             vertical offset here competes with the shared layout's own
             horizontal screen-transition slide instead of complementing it. */}
@@ -120,12 +144,11 @@ export default function RecallSummaryPage() {
               className="font-display text-[36px] font-extrabold text-brand-bold"
             />
             <p className="font-display text-2xl font-bold text-text-primary">
-              You knew you had this
+              {headerCopy.title}
             </p>
           </div>
           <p className="font-display text-base text-text-secondary">
-            And you did. That&apos;s the kind of gut check that&apos;s actually
-            worth trusting.
+            {headerCopy.body}
           </p>
         </motion.div>
 
@@ -145,6 +168,7 @@ export default function RecallSummaryPage() {
           ))}
         </motion.div>
       </div>
+      <ScrollThumbIndicator thumb={thumb} />
 
       <BottomCta className="flex flex-col gap-2">
         {/* Stacked, not side-by-side — "Try weak terms" (14 chars) at
