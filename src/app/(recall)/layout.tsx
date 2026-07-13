@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { TopBar } from "@/components/top-bar";
@@ -16,10 +15,35 @@ import {
 } from "@/lib/recall-flow-context";
 import { gentle, soft } from "@/lib/motion";
 
-/** Term-loop routes only — used to detect "term-to-term advancement",
- * the one screen-to-screen transition this task's own brief says must
- * stay exactly as it already renders (instant, no slide). */
+/** Matches any term-loop route — used by getMotionKey below to detect
+ * "term-to-term advancement", the one screen-to-screen transition this
+ * task's own brief says must stay exactly instant (no slide). */
 const isTermRoute = (path: string | null) => !!path && /^\/term-\d/.test(path);
+
+/** All term routes collapse onto one shared AnimatePresence key. This means
+ * term-to-term navigation (term-1 -> term-2 etc.) never triggers a
+ * key-change exit/enter at all — the wrapping motion.div simply never
+ * unmounts, so content swaps instantly via ordinary React reconciliation,
+ * with no animation and (critically) no exit-animation-completion tracking
+ * to rely on. Real screen-to-screen transitions still key by their own
+ * pathname and get the full slide.
+ *
+ * This replaces an earlier approach that kept pathname as the key everywhere
+ * and suppressed the animation for term-to-term hops via
+ * `transition: { duration: 0 }` with an exit target equal to the current
+ * value. That approach leaked: Motion's AnimatePresence only prunes an
+ * exited child once its exit animation's promise resolves, and a same-value
+ * zero-duration "animation" never reliably resolves that promise — so the
+ * old screen was never removed from AnimatePresence's internal rendered-
+ * children list. Worse, every following exit gets stuck behind it (the list
+ * is only flushed once *every* tracked exit completes), so consecutive
+ * term hops accumulated stale, fully-opaque, identically-positioned screens
+ * in the DOM (invisible per-hop since they exactly overlapped the new
+ * screen, but confirmed via document.querySelectorAll — repeated
+ * "Try again" loops made this an unbounded leak). A stable key sidesteps
+ * the whole exit-completion mechanism for this case instead of trying to
+ * make it complete reliably. */
+const getMotionKey = (path: string | null) => (isTermRoute(path) ? "term-loop" : path);
 
 /**
  * Persistent chrome for the whole Voice Recall flow: entry fork →
@@ -73,21 +97,12 @@ function RecallChrome({ children }: { children: React.ReactNode }) {
   const fillRemainingTermsAsSkipped = useFillRemainingTermsAsSkipped();
 
   // motion-guide.md's own "Screen-to-screen" recipe ("push transitions
-  // slide in from the right"), applied at the route level for the first
-  // time — every prior route change here was an instant swap. Term-to-term
+  // slide in from the right"), applied at the route level. Term-to-term
   // advancement (term-1 → term-2 etc.) is excluded per this task's own
   // scope: that's a content change within the same mic loop, not a screen
-  // transition, so it keeps the exact instant swap it already had (a
-  // same-tick, zero-duration "transition" rather than skipping the
-  // AnimatePresence wrapper entirely — removing the wrapper for only some
-  // route pairs would risk a genuine double-mount of two term screens'
-  // side-effecting hooks; a 0-duration one collapses to the same instant
-  // swap without that risk).
-  const prevPathnameRef = useRef<string | null>(null);
-  const shouldSlide = !(isTermRoute(prevPathnameRef.current) && isTermRoute(pathname));
-  useEffect(() => {
-    prevPathnameRef.current = pathname;
-  }, [pathname]);
+  // transition — see getMotionKey's own doc comment above for how that's
+  // achieved (a shared key, not a suppressed animation) and why.
+  const motionKey = getMotionKey(pathname);
 
   // Same "did the recall step ever get engaged" signal the summary flow
   // already uses (a real attempt, or an explicit skip) — this single
@@ -152,11 +167,11 @@ function RecallChrome({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
-            key={pathname}
-            initial={shouldSlide ? { x: 24, opacity: 0 } : { x: 0, opacity: 1 }}
+            key={motionKey}
+            initial={{ x: 24, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={shouldSlide ? { x: -24, opacity: 0 } : { x: 0, opacity: 1 }}
-            transition={shouldSlide ? soft : { duration: 0 }}
+            exit={{ x: -24, opacity: 0 }}
+            transition={soft}
             className="flex min-h-0 flex-1 flex-col"
           >
             {children}
