@@ -993,6 +993,86 @@ unaffected by the group — `/`, `/confidence`, `/confidence-recurring`, etc.):
   BUBBLE'S own separate pose logic (still swapping "listening"/"reading"
   for voice/text on Result/Hint/Reveal screens) is unrelated and
   untouched by this.
+- **XP/RECALL stat-tile font fixed on `/summary`.** The overlay text in
+  `StatImageWithValue` (XP and RECALL, the two tiles with a real dynamic
+  value) was rendering in `font-sans` (Inter Variable) while SCORE/BLAZING
+  (baked into their own images) read as bold/condensed — an earlier
+  comment on that component asserted Greed Condensed Heavy substitutes to
+  Inter Variable, which turned out wrong once actually compared: switched
+  to `font-display` (Bricolage Grotesque), confirmed via computed-style
+  inspection (`fontFamily`) before and after, not just a screenshot.
+- **`/recall-summary`'s header (title + body, above the per-term rows) is
+  now genuinely dynamic — confidence × per-term-outcome, not static
+  copy.** Previously hardcoded to the "Confident + Right" block ("You
+  knew you had this...") regardless of session outcome. Two real gaps had
+  to be closed first: the confidence-tap pick was never persisted past
+  the click that set it (fixed by adding `confidenceLevel`/
+  `CONFIDENCE_OPTIONS`/`confidenceLevelForOption` to
+  `recall-flow-context.tsx`, set by both `/confidence` and
+  `/confidence-recurring` right before routing to `/term-1`, reset on
+  "Try again"), and no per-term "source" field exists in the content
+  model for the spec's conditional "[Term] is worth another look in
+  [source]" line — always falls back to the generic review-suggestion
+  line instead of inventing source names. The header picks from
+  `SUMMARY_HEADER_COPY` (`lib/term-summary-data.ts`) by crossing
+  confidence against a **worst-case-wins outcome bucket** (right only if
+  every attempted term was unaided; else hinted; else revealed — skipped
+  folds into revealed) — same pattern already used for term-5's own
+  trigger rule. **Given this app's fixed demo script, term-2 always
+  resolves "hinted" and term-3 always resolves "revealed" when reached,
+  so "revealed" is the only bucket actually reachable via a full
+  click-through** — the "right"/"hinted" blocks are wired and
+  unit-verified (via a standalone `npx tsx` check of
+  `getSummaryHeaderCopy`, not the UI) but architecturally unreachable in
+  the shipped demo, same situation as other documented gaps in this file.
+  The two "with a hint" copy blocks are Claude-drafted, flagged
+  unconfirmed pending Evelyn's review.
+- **Motion bounce bugs fixed — two separate, unrelated root causes.**
+  (1) The mascot-bubble's outer `AnimatePresence` in
+  `(recall)/layout.tsx` was the one instance in the app missing
+  `mode="popLayout"` — without it, the exiting and entering bubble both
+  stayed in normal document flow during the crossfade, so content below
+  briefly got pushed down then snapped back once the old one unmounted
+  (confirmed via `document.getAnimations()` — see the new "Good to know"
+  entry on how). (2) Several `y:12→0` stagger reveals (`/summary`'s 4
+  stat tiles, `TermResultRow` on `/recall-summary`) had no explicit
+  `transition`, silently falling back to Motion's default spring
+  (damping ratio ≈0.5, genuinely underdamped) — fixed with an explicit
+  `soft` transition (`STAT_TILE_VARIANTS` in `summary/page.tsx`,
+  `rowVariants` in `term-result-row.tsx`), same fade+rise motion, no
+  overshoot. Term-5's own "One more" entry mascot was already clean
+  (opacity-only) — verified, not changed.
+- **`/streak`'s flame icon has a deliberate landing animation now, paired
+  with confetti — the one intentional bounce this pass.** A new
+  `motion.img` drops from `y:-80` and settles via `snappy` (genuinely
+  underdamped on purpose here, unlike everywhere else).
+  `onAnimationComplete` fires `ConfettiBurst`'s `play` prop at the exact
+  landing moment instead of the screen's own generic `revealed` timer —
+  verified live: the icon's `top` genuinely overshoots past its resting
+  value before settling, and confetti fires right after.
+- **Thin (4px) custom scrollbar added for whole-page scroll, across every
+  recall screen.** New `lib/use-scroll-thumb.ts` (`useScrollThumb`) +
+  `components/scroll-thumb-indicator.tsx` (`ScrollThumbIndicator`) — same
+  hand-drawn measured-thumb mechanism `HighlightCard`/`TextInput` already
+  use for their own small boxes (native scrollbars aren't reliably
+  stylable on mobile Safari, the actual target platform), just half the
+  width. Applied to all 11 screens' existing `overflow-y-auto` containers
+  without restructuring layout: `relative` added to the existing outer
+  wrapper, `ref`/`onScroll`/`no-scrollbar` added to the existing scroll
+  div, the thumb rendered as a new sibling right after it.
+  `HighlightCard`/`TextInput`'s own box scrollbars are untouched, still
+  8px.
+- **Quiz True/False button padding fixed on real mobile viewports.** The
+  buttons were fixed-width (`w-[179px]` each, matching Figma's own
+  404.28px canvas exactly) — **this app's 404.28px max-width is
+  desktop-mockup-only, never applied on a real narrower device** — so at
+  an actual ~375px phone width the two fixed-width buttons + gap (370px)
+  overflowed the padded container and ate into the intended edge padding
+  down to ~2.5px instead of Figma's 16.586px. Fixed with `flex-1
+  max-w-[179px]` instead of a fixed width: unchanged at Figma's own
+  canvas width, shrinks together on narrower viewports so the edge
+  padding stays correct. Verified via `getBoundingClientRect()` at both
+  375px and 600px.
 
 Shared infrastructure (all under `src/`):
 - `lib/recall-flow-context.tsx` also exports **`getEntryForkRoute(termOutcomes)`**
@@ -1311,6 +1391,10 @@ Shared infrastructure (all under `src/`):
   `components/count-up-number.tsx`, `components/confetti-burst.tsx`,
   `lib/term-summary-data.ts` — see "Current build status" above, plus the
   `CountUpNumber`/confetti-specific gotchas noted there.
+- `lib/use-scroll-thumb.ts` + `components/scroll-thumb-indicator.tsx` —
+  the thin (4px) page-level scroll-thumb mechanism, used across every
+  recall screen's own `overflow-y-auto` container; see "Current build
+  status" above.
 
 ## Always
 - Build the states my committed flow needs (from Module 3). At minimum
@@ -1621,3 +1705,52 @@ From the spec's "Constraints — do NOT build" section:
   `filter: "all"` immediately before each click rather than reusing
   refs from an earlier read, especially right after a click that
   changes stage/route.
+- **`document.getAnimations()`/rAF/`setTimeout` polling only reliably
+  observes a Motion animation when triggered and polled inside the SAME
+  script call.** Navigating or clicking in one tool call, then polling in
+  a separate subsequent call, consistently found the animation already
+  fully settled — even a spring that should take 300-800ms. Chaining
+  `element.click()` and an immediate polling loop inside one
+  `javascript_tool` call does catch it mid-flight. For a route-MOUNT
+  animation (fires on page load, not a click you can script), trigger it
+  via a client-side navigation you script yourself (clicking a button
+  whose handler calls `router.push`) rather than a raw `navigate()` call,
+  so the trigger and the poll are still in one script.
+- **`AnimatePresence` missing `mode="popLayout"` is a real, recurring
+  source of "content pushed down then snaps back" bugs in this specific
+  codebase.** Without it, an exiting and entering sibling both stay in
+  normal document flow during the crossfade — briefly double-stacking and
+  pushing whatever's below them down, then snapping back once the old one
+  unmounts. If a "bounce"/"jump" bug is reported near an
+  AnimatePresence-driven crossfade, check for this before reaching for
+  spring-damping tweaks — every instance with more than one possible
+  child at a time needs it (single-child boolean-overlay sheets like
+  `SkipConfirmSheet`/`ExitConfirmSheet` don't, since there's never more
+  than one child).
+- **A Motion `variants`/`animate` change with no explicit `transition`
+  falls back to Motion's default spring (stiffness 100 / damping 10 — a
+  damping ratio of ~0.5, clearly underdamped) and will visibly
+  overshoot.** Hit this independently in multiple unrelated spots
+  (`/summary`'s stat tiles, `TermResultRow`) — always give an explicit
+  `transition` (this app's own `gentle`/`snappy`/`sheet`/`soft` presets)
+  on any `y`/`scale`/`x` animation, even a "just fade this in" one,
+  unless a visible bounce is actually wanted.
+- **This app's `404.28px` content max-width (`app/layout.tsx`) is
+  desktop-mockup-only — real device viewports get no such cap**, so a
+  value copied verbatim from Figma's own fixed-width canvas (e.g. a
+  `w-[179px]` button matching Figma's `179.333px`) can overflow into its
+  own container's padding on an actual narrower phone. Confirmed via
+  `getBoundingClientRect()` at a real 375px viewport, not just the 404px
+  desktop mockup frame this project's own screenshots default to. If a
+  spacing bug only reproduces on a real device and not the desktop
+  preview, check for fixed-pixel-width elements sized to Figma's exact
+  canvas dimensions first.
+- **Two Claude Code sessions can end up pointed at the same project
+  directory at once, and Next.js's dev-server lock is per-directory, not
+  per-port.** A second `preview_start` refuses to start even on a
+  different port, and the second session's Browser pane can't reach the
+  first session's server either (separate sandboxes) — `curl` from Bash
+  can reach it, but the Browser pane can't. Resolved this session by
+  asking the user whether to kill the other session's process; the
+  alternative is a git worktree, but `EnterWorktree` is explicitly gated
+  to only fire when the user or CLAUDE.md asks for one.
