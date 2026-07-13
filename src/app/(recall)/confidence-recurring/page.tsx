@@ -19,7 +19,7 @@ import { useScrollThumb } from "@/lib/use-scroll-thumb";
 import { ScrollThumbIndicator } from "@/components/scroll-thumb-indicator";
 
 const DEFAULT_PROMPT =
-  "We’re about to test what you’ve learned in your own words, before we get started, how confident do you feel?";
+  "We’re about to test what you’ve learned, in your own words. Before we get started — how confident do you feel?";
 const SELECTED_PROMPT = "Let’s find out!";
 
 /**

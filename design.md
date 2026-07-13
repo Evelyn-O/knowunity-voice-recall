@@ -85,7 +85,7 @@ Each hue follows the same 4-slot pattern: `bold` = solid fill, `onBold` = text/i
 | `Homie/Inkwell` | `#9178e6` | Legacy-named duplicate of `mascot/primary` |
 | `Homie/Eyes` | `#0a0a0a` | Mascot pupil color |
 
-**Gap — naming, not color:** several mascot variables are still named `Homie/*` internally (pre-reskin branding), even though CLAUDE.md's committed reskin target is the "Noe" mascot. The *hex values* are fine to use as-is; the *token names* haven't been migrated. Don't let this leak into new code as `Homie`-named variables.
+**Gap — naming, not color:** several mascot variables are still named `Homie/*` internally (pre-reskin branding), even though CLAUDE.md's committed reskin target is the "Knowie" mascot. The *hex values* are fine to use as-is; the *token names* haven't been migrated. Don't let this leak into new code as `Homie`-named variables.
 
 ### System / OS-chrome tokens (not app design-system tokens)
 These live in the same Figma variable collection but back the iOS status bar and the native permission-dialog mockup, not the app's own UI:
@@ -186,7 +186,7 @@ Every screen in the flow shares the same three-layer scaffold:
 This is the mechanism that satisfies the "text fallback reachable in one tap, never hard-gated" rule structurally — the fallback/skip affordance lives in the same docked slot on every screen rather than being screen-specific.
 
 ### Mascot + speech-bubble card
-The recurring "Noe is talking" unit is a fixed two-part row: a circular mascot avatar (with a small drop-shadow ellipse beneath it) on the left, and a rounded `background/surface` speech bubble to its right with a triangular tail pointing back at the mascot. Mascot **expression changes per moment**, not just per screen — same layout, different character art:
+The recurring "Knowie is talking" unit is a fixed two-part row: a circular mascot avatar (with a small drop-shadow ellipse beneath it) on the left, and a rounded `background/surface` speech bubble to its right with a triangular tail pointing back at the mascot. Mascot **expression changes per moment**, not just per screen — same layout, different character art:
 - `standby` — pre-step / neutral prompts
 - `excited` — confidence tap
 - `Listening` (with a headphones overlay + closed eyes) — while recording

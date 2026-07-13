@@ -866,7 +866,7 @@ export default function TermTwoPage() {
                   Tap to answer
                 </p>
                 <p className="max-w-[190px] text-center font-sans text-xs text-text-secondary">
-                  Try to go to quiet place for better results &gt;.&lt;
+                  Try to find a quiet place for better results &gt;.&lt;
                 </p>
               </>
             )}

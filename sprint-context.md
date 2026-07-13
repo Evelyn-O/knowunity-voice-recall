@@ -36,7 +36,7 @@ Tensions accepted, not solved — design around these, don't assume they're clos
 - Score is diagnostic only: no mandatory pass threshold, no fixed weighted formula yet — right weighting needs real usage data, not a guess now.
 - No stark red "Incorrect" state, ever — a false wrong from mishearing is worse here than in multiple-choice; judge and UI both lean generous.
 - Text fallback is visually and tonally equal to voice, never a lesser/second-class path — that's what keeps switching to it from feeling like giving up.
-- Target reskin: mascot is "Noe" (not "Knowie"), typefaces are Inter Variable and Bricolage (not proprietary Greed VF) — build against the reskin, not the current live app.
+- Target reskin: mascot is "Knowie", typefaces are Inter Variable and Bricolage (not proprietary Greed VF) — build against the reskin, not the current live app.
 
 ## Can't-speak fallback
 Typing is a real parallel option offered at the entry fork itself, not something revealed only after a failed voice attempt. Switching to it any time never traps the student; it runs the same judge/hint-ladder logic, minus the voice-only "say it back" step.

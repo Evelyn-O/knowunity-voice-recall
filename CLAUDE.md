@@ -21,12 +21,12 @@ Treat sprint-context.md as a living spec, not a finished one — it explicitly f
 - **Read the whole file first.** Decisions, hard constraints ("Constraints — do NOT build"), and rationale ("Key decisions") are load-bearing — a change that looks like a simplification may directly violate a decision recorded a few sections away.
 - **Don't silently resolve open questions.** Where the doc says something is unresolved (e.g. the entry-sequence simplification candidates in steps 1–3), don't pick one and treat it as settled — flag the tradeoff back to the user instead.
 - **Preserve the "why."** Each decision in the doc is recorded as `decision — because reason`. When extending or implementing the feature, keep changes consistent with the stated reason, not just the surface behavior.
-- **Reskin target matters.** Build against the target reskin (mascot "Noe," typefaces Inter Variable + Bricolage), not the current live Knowunity app's branding ("Knowie," proprietary Greed VF), unless told otherwise.
+- **Reskin target matters.** Build against the target reskin (mascot "Knowie," typefaces Inter Variable + Bricolage), not the current live Knowunity app's proprietary Greed VF typeface, unless told otherwise.
 
 ## Project
 - Building: a clickable prototype of a voice active-recall step in
   Knowunity's Exam Plan. A student explains a key term out loud; the
-  character "Knowie" (reskinned as "Noe") replies in TEXT.
+  character "Knowie" replies in TEXT.
 - For: students (~14–18) revising on their phone.
 - Committed concept (SPEC.md §1): the mic-permission primer screen **is** the
   entry fork for first encounter — there's no separate Speak/Type/Maybe-later
@@ -46,7 +46,7 @@ Treat sprint-context.md as a living spec, not a finished one — it explicitly f
   mic just advances the mocked flow.
 - Never build real speech-to-text, real audio capture, or call any
   model/API.
-- Knowie/Noe replies in TEXT only. Never add text-to-speech or audio
+- Knowie replies in TEXT only. Never add text-to-speech or audio
   output — this is a hard constraint from the brief, not a scope cut.
 
 ## Stack & tools
@@ -1470,20 +1470,22 @@ Shared infrastructure (all under `src/`):
 - Before building a screen, fetch its Figma node (via the Figma MCP tools
   or the `build-screen` skill) and match its layout and feel — there is no
   local `reference/` folder in this repo; the Figma file is the reference.
-- **"I can't speak right now" and "Type instead" are not interchangeable
-  labels for the same button — they're two different copy strings for two
-  different UI spots, and neither ever swaps into the other's spot:**
-  - "I can't speak right now" — always, unconditionally, on every term's
-    main skip-icon-button + pill combo (the standard mic-loop bottom bar).
-    Never swaps to "Type instead" here, no matter how many attempts the
-    student has made on that term.
-  - "Type instead" — only on (a) the entry screen's own secondary button,
-    and (b) the small text-link at the bottom of a hint screen (term-2/3).
-    An earlier pass had the mic-loop pill swap to "Type instead" after a
-    term's first attempt (per an early reading of SPEC.md §3's Idle-state
-    description) — that swap was removed after Evelyn corrected it; don't
-    reintroduce attempt-based or "has tried voice once" label-swapping on
-    that pill.
+- **The mic-loop bottom bar's mode-switch pill is mode-driven, not
+  attempt-driven — and its copy is "Type instead"/"Try with voice", not
+  "I can't speak right now".** The shared bar (`components/mic-loop-bottom-bar.tsx`)
+  always reads "Type instead" in voice mode and "Try with voice" in text
+  mode, on every term. This replaced the original "I can't speak right
+  now" copy after Module 5 testing (feedback.md [M]: 2/5 testers were
+  unsure whether "I can't speak right now" meant an action or a state) —
+  don't reintroduce "I can't speak right now," that reverses a validated
+  fix. What still doesn't change: the swap is driven only by `inputMode`,
+  never by attempt count — don't reintroduce attempt-based or "has tried
+  voice once" label-swapping on that pill (an earlier pass tried that per
+  an early reading of SPEC.md §3's Idle-state description; Evelyn
+  corrected it back to a pure mode-driven flip). Term-2/3's hint screens
+  keep their own separate "Type instead" text-link, unrelated to this
+  pill. The entry screen's own former "Type instead" secondary button was
+  removed entirely per feedback.md — see `(recall)/entry/page.tsx`.
 
 ## Never
 - Never style with raw hex or inline styles.
@@ -1546,7 +1548,7 @@ From the spec's "Constraints — do NOT build" section:
   Glob/Bash + Figma screenshot) to sanity-check a screen against SPEC.md,
   design.md, and its Figma frame after it's built. Same mid-session
   registration caveat as above.
-- public/images — mascot (Knowie/Noe), mic-state, and summary/result-icon art. Complete current list:
+- public/images — mascot (Knowie), mic-state, and summary/result-icon art. Complete current list:
   - blazing-summary-with-recall.svg
   - blazing-summary-without-recall.svg.svg *(yes, doubled extension — that's the real filename on disk, not a typo to fix)*
   - checking-it-mic.svg
