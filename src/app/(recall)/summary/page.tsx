@@ -34,6 +34,18 @@ const STAT_TILE_VARIANTS = {
   visible: { opacity: 1, y: 0, transition: soft },
 };
 
+// Timing for the stat-tile stagger reveal, shared by the confetti trigger
+// and CountUpNumber's own `delay` below — without this, CountUpNumber
+// starts its 0.9s count at mount, while the tile itself stays invisible
+// (opacity 0) until its staggered slot, so most of the "climbs from zero"
+// motion played unseen. Passing each tile's own reveal delay here means
+// the count only starts once the tile is actually visible.
+const REVEALED_DELAY_S = 0.35; // matches the setTimeout below (350ms)
+const STAT_TILE_DELAY_CHILDREN_S = 0.15;
+const STAT_TILE_STAGGER_S = 0.09;
+const tileRevealDelay = (index: number) =>
+  REVEALED_DELAY_S + STAT_TILE_DELAY_CHILDREN_S + index * STAT_TILE_STAGGER_S;
+
 /**
  * Final "You did it!" stats screen — two Figma-distinct variants, chosen
  * from the same session context /streak already used to route here,
@@ -142,6 +154,12 @@ export default function SummaryPage() {
   const recallAttempted = useRecallAttempted();
   const resetRecallSession = useResetRecallSession();
   const [revealed, setRevealed] = useState(false);
+  // Fires the reward confetti once the XP tile itself finishes landing
+  // (its own staggered fade-in completing), not on the generic `revealed`
+  // timer — same "confetti follows a real landing moment" pattern
+  // /streak already uses for its flame icon, instead of an independently
+  // timed effect that competes with the stat-tile stagger for attention.
+  const [xpTileLanded, setXpTileLanded] = useState(false);
   const { ref: scrollRef, thumb, measure } = useScrollThumb<HTMLDivElement>();
 
   const onExit = useCallback(() => router.back(), [router]);
@@ -149,7 +167,7 @@ export default function SummaryPage() {
   useMascotBubble(null);
 
   useEffect(() => {
-    const id = setTimeout(() => setRevealed(true), 350);
+    const id = setTimeout(() => setRevealed(true), REVEALED_DELAY_S * 1000);
     return () => clearTimeout(id);
   }, []);
 
@@ -213,7 +231,7 @@ export default function SummaryPage() {
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-      <ConfettiBurst play={revealed} />
+      <ConfettiBurst play={xpTileLanded} />
 
       <div
         ref={scrollRef}
@@ -255,14 +273,26 @@ export default function SummaryPage() {
           <motion.div
             initial="hidden"
             animate={revealed ? "visible" : "hidden"}
-            variants={{ visible: { transition: { staggerChildren: 0.09, delayChildren: 0.15 } } }}
+            variants={{ visible: { transition: { staggerChildren: STAT_TILE_STAGGER_S, delayChildren: STAT_TILE_DELAY_CHILDREN_S } } }}
             className="grid w-full max-w-[370px] grid-cols-2 gap-3"
           >
-            <motion.div variants={STAT_TILE_VARIANTS}>
+            <motion.div
+              variants={STAT_TILE_VARIANTS}
+              onAnimationComplete={(definition) => {
+                // Guard against the spurious call Motion fires for the
+                // initial "hidden" state (animate === initial === "hidden"
+                // before `revealed` flips true, so that's technically a
+                // completed no-op animation too) — confirmed live via
+                // computed-opacity sampling: without this check, confetti
+                // burst within ~90ms of mount instead of ~800ms when the
+                // tile actually finishes landing.
+                if (definition === "visible") setXpTileLanded(true);
+              }}
+            >
               <StatImageWithValue
                 src="/images/xp-summary-with-recall.svg"
                 accentClass="text-blue-bold"
-                value={<CountUpNumber value={stats.xp} />}
+                value={<CountUpNumber value={stats.xp} delay={tileRevealDelay(0)} />}
               />
             </motion.div>
             <motion.div variants={STAT_TILE_VARIANTS}>
@@ -276,6 +306,7 @@ export default function SummaryPage() {
                   <CountUpNumber
                     value={recallSuccessful}
                     format={(n) => `${Math.round(n)}/${recallTotal}`}
+                    delay={tileRevealDelay(2)}
                   />
                 }
               />
@@ -291,12 +322,17 @@ export default function SummaryPage() {
           <motion.div
             initial="hidden"
             animate={revealed ? "visible" : "hidden"}
-            variants={{ visible: { transition: { staggerChildren: 0.09, delayChildren: 0.15 } } }}
+            variants={{ visible: { transition: { staggerChildren: STAT_TILE_STAGGER_S, delayChildren: STAT_TILE_DELAY_CHILDREN_S } } }}
             className="flex w-full max-w-[370px] gap-3"
           >
             <motion.div
               className="flex-1"
               variants={STAT_TILE_VARIANTS}
+              onAnimationComplete={(definition) => {
+                // Same guard as the full variant's XP tile above — Motion
+                // fires this for the initial no-op "hidden" state too.
+                if (definition === "visible") setXpTileLanded(true);
+              }}
             >
               <StatImage src="/images/xp-summary-without-recall.svg.svg" />
             </motion.div>
