@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { MascotImage } from "@/components/mascot-image";
+import { CheckingItIcon } from "@/components/checking-it-icon";
 import { LoadingSpinnerIcon } from "@/components/icons";
 
 /**
@@ -11,8 +11,10 @@ import { LoadingSpinnerIcon } from "@/components/icons";
  * tapping Send) reuses the identical visual/animation instead of a
  * second, hand-copied version — "reuse the exact Sending UI/animation
  * from the mic flow" per the text-fallback build task. Each term's own
- * voice-path JSX is left as-is (already verified, no need to touch it);
- * this component is additive, used only by the new text-mode branches.
+ * voice-path JSX renders this same circle/pulse markup inline rather than
+ * calling this component directly (kept that way, not refactored to share
+ * it) — Checking's own icon (CheckingItIcon) is shared between the two,
+ * though, so voice and text-fallback always show the identical asset.
  */
 export function SendingIndicator({ onCancel }: { onCancel: () => void }) {
   return (
@@ -48,7 +50,7 @@ export function CheckingIndicator() {
           animate={{ scale: [1, 1.08, 1] }}
           transition={{ duration: 1, repeat: Infinity, repeatType: "reverse" }}
         >
-          <MascotImage pose="reading" alt="Noe, reading" size={80} />
+          <CheckingItIcon size={80} />
         </motion.div>
       </div>
       <div className="mt-3 flex flex-col items-center gap-2">

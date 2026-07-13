@@ -146,25 +146,33 @@ export default function RecallSummaryPage() {
         </motion.div>
       </div>
 
-      <BottomCta className="flex gap-2">
-        {/* Hand-rolled, not SecondaryButton — that component's shared
-            pillBase is w-full, which only works alone or stacked; every
-            other "small pill + wide pill" row in this app (Result
-            sheets' Why?/Continue, hint screens' Try again) hand-rolls
-            the small one for the same reason. */}
+      <BottomCta className="flex flex-col gap-2">
+        {/* Stacked, not side-by-side — "Try weak terms" (14 chars) at
+            Continue's own 21px/bold type genuinely doesn't fit an equal
+            half-width share even at this app's full 404px content width
+            (measured: ~159px of text, ~121px available) — side-by-side
+            equal-width was the first attempt here (matching Figma node
+            13900:24948's `flex: 1 0 0` pair), but that node's own
+            single-line render isn't achievable at this button's real
+            constrained width. Evelyn's follow-up reference (nodes
+            14050:23562/23647) supersedes it with a full-width stacked
+            pair instead — "Try weak terms" on top, Continue below, same
+            8px gap, both full-width. Hand-rolled, not SecondaryButton —
+            that component's shared pillBase is already w-full, which is
+            exactly right for a stacked pill; this one's hand-rolled
+            purely to match PrimaryButton's own pillLabel type (21px
+            bold) that SecondaryButton doesn't expose. */}
         <motion.button
           whileTap={{ scale: 0.94 }}
           transition={snappy}
           onClick={handleTryAgain}
-          className="relative flex h-[58px] items-center justify-center rounded-full bg-interactive-secondary px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
+          className="relative flex h-[58px] w-full items-center justify-center rounded-full bg-interactive-secondary px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
         >
-          <span className="font-display text-[18px] font-semibold text-interactive-on-secondary">
-            Try again
+          <span className="font-display text-[21px] font-bold whitespace-nowrap text-interactive-on-secondary">
+            Try weak terms
           </span>
         </motion.button>
-        <PrimaryButton onClick={handleContinue} className="flex-1">
-          Continue
-        </PrimaryButton>
+        <PrimaryButton onClick={handleContinue}>Continue</PrimaryButton>
       </BottomCta>
     </div>
   );

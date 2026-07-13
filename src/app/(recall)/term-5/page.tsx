@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { MascotBubble } from "@/components/mascot-bubble";
 import { MascotImage } from "@/components/mascot-image";
+import { CheckingItIcon } from "@/components/checking-it-icon";
 import { BottomCta } from "@/components/bottom-cta";
 import { HighlightCard } from "@/components/highlight-card";
 import { PrimaryButton, TextLinkButton } from "@/components/buttons";
@@ -725,7 +726,7 @@ export default function TermFivePage() {
                 animate={{ scale: [1, 1.08, 1] }}
                 transition={{ duration: 1, repeat: Infinity, repeatType: "reverse" }}
               >
-                <MascotImage pose="listening" alt="Noe, listening" size={80} />
+                <CheckingItIcon size={80} />
               </motion.div>
             )}
           </motion.button>

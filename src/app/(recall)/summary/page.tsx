@@ -295,17 +295,26 @@ export default function SummaryPage() {
 
       <BottomCta className="flex flex-col gap-2">
         {isFullVariant ? (
-          <div className="flex gap-2">
-            {/* Hand-rolled, not SecondaryButton — see recall-summary/
-                page.tsx for why (shared pillBase is w-full). */}
+          <div className="flex flex-col gap-2">
+            {/* Stacked, not side-by-side — see recall-summary/page.tsx's
+                own comment for the full reasoning (equal-width side-by-
+                side was tried first, matching Figma node 13900:26505's
+                `flex: 1 0 0` pair, but "Try weak terms" at Continue's own
+                21px/bold type doesn't actually fit half the row even at
+                this app's full 404px width; Evelyn's follow-up reference,
+                node 14050:23647, supersedes it with a full-width stacked
+                pair). Hand-rolled, not SecondaryButton — that component's
+                shared pillBase is already w-full, right for a stacked
+                pill; this one's hand-rolled purely to match
+                PrimaryButton's own pillLabel type. */}
             <motion.button
               whileTap={{ scale: 0.94 }}
               transition={snappy}
               onClick={handleTryAgain}
-              className="relative flex h-[58px] items-center justify-center rounded-full bg-interactive-secondary px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
+              className="relative flex h-[58px] w-full items-center justify-center rounded-full bg-interactive-secondary px-6 shadow-[inset_0px_-4px_0px_0px_rgba(0,0,0,0.15)]"
             >
-              <span className="font-display text-[18px] font-semibold text-interactive-on-secondary">
-                Try again
+              <span className="font-display text-[21px] font-bold whitespace-nowrap text-interactive-on-secondary">
+                Try weak terms
               </span>
             </motion.button>
             {/* Claim XP ends this recall-step session at the path view —
@@ -313,9 +322,7 @@ export default function SummaryPage() {
                 longer shares handleTryAgain with "Try again" (a later,
                 explicit instruction superseded SPEC.md §2D's earlier
                 "loops back to confidence tap" reading). */}
-            <PrimaryButton onClick={goToPathView} className="flex-1">
-              Claim XP
-            </PrimaryButton>
+            <PrimaryButton onClick={goToPathView}>Claim XP</PrimaryButton>
           </div>
         ) : (
           <div className="flex gap-2">
