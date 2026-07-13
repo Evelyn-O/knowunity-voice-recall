@@ -366,15 +366,20 @@ export default function TermOnePage() {
     return () => clearInterval(id);
   }, [stage]);
 
+  // Shortened from 4000ms each (8s total) — motion-guide.md's own
+  // "Processing" recipe calls for "~1-1.5s... don't make it look like a
+  // real network call you don't have." 1200ms still completes a full
+  // spinner rotation / checking pulse cycle before advancing, so neither
+  // animation gets visibly cut off mid-loop.
   useEffect(() => {
     if (stage !== "sending") return;
-    const id = setTimeout(() => setStage("checking"), 4000);
+    const id = setTimeout(() => setStage("checking"), 1200);
     return () => clearTimeout(id);
   }, [stage]);
 
   useEffect(() => {
     if (stage !== "checking") return;
-    const id = setTimeout(() => setStage("result"), 4000);
+    const id = setTimeout(() => setStage("result"), 1200);
     return () => clearTimeout(id);
   }, [stage]);
 
@@ -666,7 +671,16 @@ export default function TermOnePage() {
               <MicIcon className="h-[50px] w-[50px] text-text-primary" strokeWidth={1.5} />
             )}
             {stage === "recording" && (
-              <PauseIcon className="h-[50px] w-[50px] text-text-primary" />
+              // Same within-state breathing pulse Checking already uses
+              // (motion-guide.md's "Recording / listening state" recipe) —
+              // doesn't touch the locked instant-swap between mic states,
+              // this only loops while already in Recording.
+              <motion.div
+                animate={{ scale: [1, 1.08, 1] }}
+                transition={{ duration: 1, repeat: Infinity, repeatType: "reverse" }}
+              >
+                <PauseIcon className="h-[50px] w-[50px] text-text-primary" />
+              </motion.div>
             )}
             {stage === "paused" && <PlayIcon className="h-[50px] w-[50px] text-text-primary" />}
             {stage === "hearing-back" && (

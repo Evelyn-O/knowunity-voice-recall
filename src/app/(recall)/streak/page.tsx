@@ -12,7 +12,7 @@ import {
   useRecallAttempted,
   useRecallStep,
 } from "@/lib/recall-flow-context";
-import { gentle, snappy } from "@/lib/motion";
+import { gentle, snappy, soft } from "@/lib/motion";
 import { useScrollThumb } from "@/lib/use-scroll-thumb";
 import { ScrollThumbIndicator } from "@/components/scroll-thumb-indicator";
 
@@ -42,9 +42,14 @@ import { ScrollThumbIndicator } from "@/components/scroll-thumb-indicator";
 const DAY_LABELS = ["Mo", "Tu", "We", "Th", "Fr"];
 const FILLED_DAYS = 3;
 
+// Explicit `soft` transition on "visible" — with none specified, Motion
+// falls back to its default spring (damping ratio ~0.5, clearly
+// underdamped), an unintended bounce sitting right next to the flame
+// icon's own *deliberate* landing bounce above it. `soft` keeps the same
+// fade+pop-in motion with no overshoot.
 const dayVariants = {
   hidden: { opacity: 0, scale: 0.6 },
-  visible: { opacity: 1, scale: 1 },
+  visible: { opacity: 1, scale: 1, transition: soft },
 };
 
 export default function StreakPage() {

@@ -350,15 +350,17 @@ export default function TermFivePage() {
     return () => clearInterval(id);
   }, [stage]);
 
+  // Shortened from 4000ms each (8s total) — see term-1's own comment on
+  // this same pair for the motion-guide.md reasoning.
   useEffect(() => {
     if (stage !== "sending") return;
-    const id = setTimeout(() => setStage("checking"), 4000);
+    const id = setTimeout(() => setStage("checking"), 1200);
     return () => clearTimeout(id);
   }, [stage]);
 
   useEffect(() => {
     if (stage !== "checking") return;
-    const id = setTimeout(() => setStage("result"), 4000);
+    const id = setTimeout(() => setStage("result"), 1200);
     return () => clearTimeout(id);
   }, [stage]);
 
@@ -719,7 +721,16 @@ export default function TermFivePage() {
               <MicIcon className="h-[50px] w-[50px] text-text-primary" strokeWidth={1.5} />
             )}
             {micStage === "recording" && (
-              <PauseIcon className="h-[50px] w-[50px] text-text-primary" />
+              // Same within-state breathing pulse Checking already uses
+              // (motion-guide.md's "Recording / listening state" recipe) —
+              // doesn't touch the locked instant-swap between mic states,
+              // this only loops while already in Recording.
+              <motion.div
+                animate={{ scale: [1, 1.08, 1] }}
+                transition={{ duration: 1, repeat: Infinity, repeatType: "reverse" }}
+              >
+                <PauseIcon className="h-[50px] w-[50px] text-text-primary" />
+              </motion.div>
             )}
             {micStage === "paused" && <PlayIcon className="h-[50px] w-[50px] text-text-primary" />}
             {micStage === "hearing-back" && (
