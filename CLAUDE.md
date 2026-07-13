@@ -1073,6 +1073,57 @@ unaffected by the group — `/`, `/confidence`, `/confidence-recurring`, etc.):
   canvas width, shrinks together on narrower viewports so the edge
   padding stays correct. Verified via `getBoundingClientRect()` at both
   375px and 600px.
+- **Quiz True/False buttons no longer jump ~72px down when graded.** The
+  result sheet (`stage === "review"`) is `position: absolute` (needed for
+  its own slide-up entrance), so unlike idle — where the button row's
+  `flex-1` centering shares real flow space with a genuine `BottomCta`
+  sibling (144px) — the review stage's button row had no such sibling and
+  centered over the *full* remaining height instead, visibly dropping the
+  buttons the instant the answer graded. Fixed with an invisible 144px
+  spacer (matching `BottomCta`'s own measured height) added to the review
+  stage's flow, so both stages' centering math produces the same result;
+  the result sheet's own animation is untouched. Verified via
+  `getBoundingClientRect()`: `top` is identical (387px) in both the idle
+  and freshly-graded states.
+- **Motion audit against motion-guide.md's own recipes — three fixes
+  shipped, two explicitly declined.** Walked the full recall loop
+  (starting to speak, while speaking, the wait after finishing, result
+  landing, moving to the next term, finishing) and checked each moment
+  against the guide's stated recipes; presented as a prioritized list,
+  reviewed item-by-item rather than as a batch:
+  - **Shipped:** Sending + Checking's combined wait shortened from 8s
+    (4000ms each) to ~2.4s (1200ms each) across all 5 terms — the guide's
+    own "Processing" recipe calls for "~1-1.5s... don't make it look like
+    a real network call you don't have," and 8s read exactly like one.
+    1200ms still completes a full spinner rotation / checking pulse cycle
+    before advancing, so neither animation gets cut off mid-loop.
+  - **Shipped:** Recording's mic icon now pulses (`scale` 1↔1.08, 1s
+    loop) the same way Checking's icon already did — the guide's
+    "Recording / listening state" recipe calls for exactly this pulse,
+    but it was only ever wired to Checking, not Recording, even though
+    the recipe is written for this moment specifically. This is a
+    *within*-state loop (same category as the Sending spinner/Checking
+    pulse), not a between-state crossfade, so it doesn't touch the
+    locked "instant swap between mic states" decision (see term-1's own
+    "Instant state swap, deliberately" comment) — confirmed via
+    computed-style sampling that the scale genuinely oscillates on a
+    continuous loop, not a one-shot.
+  - **Shipped:** `/streak`'s day-of-week circles (`dayVariants`) now use
+    an explicit `soft` transition instead of falling back to Motion's
+    default spring (damping ratio ≈0.5) — the same missing-transition
+    bounce bug already fixed elsewhere this session (stat tiles,
+    `TermResultRow`), left unfixed at the time as out of scope, now
+    closed. It sat right next to the flame icon's own *deliberate*
+    landing bounce, reading as sloppy rather than playful. Verified via
+    computed-style sampling: scale now rises monotonically from 0.6 to
+    exactly 1.0, no overshoot.
+  - **Explicitly declined, not touched:** staggering the result-reveal
+    bubble and bottom sheet (currently fire simultaneously, which
+    technically violates the guide's own "one thing moving at a time"
+    rule) and adding an entrance animation to the "What I heard"/"What
+    you wrote" recap card (currently static while the reply bubble and
+    sheet around it animate). Both remain open findings if revisited
+    later — flagged here so they aren't rediscovered as new bugs.
 
 Shared infrastructure (all under `src/`):
 - `lib/recall-flow-context.tsx` also exports **`getEntryForkRoute(termOutcomes)`**
