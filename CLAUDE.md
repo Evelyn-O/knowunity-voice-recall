@@ -475,8 +475,10 @@ unaffected by the group — `/`, `/confidence`, `/confidence-recurring`, etc.):
 - **No-recall `/summary` buttons wired + stat-tile images (both
   variants).** Simplified/no-recall variant's buttons are "Try voice"
   (→ `/`, the first-time entry fork — this student hasn't done the recall
-  loop yet) / "Claim XP" (→ `/`, ends the session; no further screen
-  exists yet in this prototype). Its Score value was corrected to `7/10`
+  loop yet) / "Claim XP" (→ `/path`, the exam-plan path view — **updated
+  by a later pass**, see the dedicated "Claim XP" correction bullet
+  further down for why this moved off `/`). Its Score value was corrected
+  to `7/10`
   (was a stale `10/10` mismatch against the real Figma frame).
   Every stat tile on both `/summary` variants (XP/Score/Blazing/Recall)
   now uses the real exported box images
@@ -643,6 +645,16 @@ unaffected by the group — `/`, `/confidence`, `/confidence-recurring`, etc.):
   Claim XP loops back to a fresh confidence tap. The no-recall/simplified
   variant's own "Claim XP" (→ `/`, since that student never engaged with
   recall) is untouched — still correct there.
+  - **Superseded by a later pass, once `/path` existed:** "Claim XP" on
+    *both* variants now ends the recall-step session at the exam-plan
+    path view instead — `goToPathView()` (→ `/path`, no session reset,
+    same as this button already didn't reset on the no-recall variant).
+    On the full variant this is a genuine behavior split from "Try
+    again", which they'd shared since the entry above: "Try again" keeps
+    looping to a fresh confidence tap exactly as documented above,
+    "Claim XP" no longer does. Confirmed directly with Evelyn — this
+    reverses the SPEC.md §2D reading the entry above was based on, not a
+    silent guess.
 - **`HighlightCard` — horizontal-scroll bug fixed, dimmed variant added,
   padding/title copy corrected.**
   - **Horizontal-scroll bug**: `overflow-y-auto` alone doesn't stop
@@ -742,8 +754,81 @@ unaffected by the group — `/`, `/confidence`, `/confidence-recurring`, etc.):
   ? "reading" : "listening"` swap to every Result/Hint/Reveal screen
   across all 5 terms, so that scope line no longer holds. See "What I
   heard now shows on every voice result, regardless of outcome" below.
+- **`/path` and `/quiz` — the new pre-step lead-in, built.** A short
+  mocked sequence in front of the existing entry fork: exam plan path
+  view → last quiz question → the fork, unchanged. Both routes live
+  under `(recall)` and reuse its TopBar/MascotBubble/BottomCta chrome,
+  but with their own step numbers (this quiz's own progress, unrelated
+  to the recall flow's 1–6) — this is additive in front of the existing
+  flow, `/` still means exactly what it always did.
+  - **`/path`** (Figma `14030:17149`) — hero card (XP chip, gear,
+    "Music theory" title, calendar/grade-goal chips, progress bar,
+    "Notes, Pitch & Rhythm" card) kept as a **sibling of the scrollable
+    node list, not inside it** — simplest way to keep it pinned at the
+    top while the path scrolls underneath, no `position: sticky` edge
+    cases. No TopBar/exit-X or MascotBubble (`currentStep: null`,
+    `useMascotBubble(null)` — nothing in this Figma frame uses either).
+    4 path nodes: Music Theory (unlocked, tappable → `/quiz`), Harmony I
+    / Harmony II / Harmony III (locked, inert `<div>`s not buttons).
+    **Figma naming gap, confirmed with Evelyn, not guessed:** the
+    updated file has nodes 2 and 3 both literally labeled "Harmony
+    II" — a copy-paste leftover from duplicating the node to add
+    "Harmony III"; the real sequence is Harmony I → II → III.
+    - Path connectors are curved/sinuous 3-dot shapes reproduced
+      directly from Figma's own "Group 1"/"Group 2" assets (white/10%
+      opacity circles at specific offsets), not a straight dashed line
+      — an early pass used a plain dashed `border-l` as a placeholder
+      since the connector assets weren't in this task's delivered asset
+      list; corrected once Evelyn flagged it.
+    - `test-path-enabled-music.svg`/`test-path-dissabled.svg` render
+      **directly, no wrapper border** — both assets already bake in the
+      correct-thickness ring (`stroke-width=8`, white/10%) at their
+      native 118×118; an earlier pass added an extra `border-8` div
+      around them, which doubled the ring thickness. Use the assets as
+      the source of truth for thickness, don't hand-code it.
+    - Bottom nav's 5 icons are **deliberately not the same box size** —
+      measured each asset's actual opaque-pixel bounds via a canvas
+      readback (not just its declared viewBox): the 4 line icons only
+      fill ~51% of their own 40×40 canvas, while the avatar badge's
+      circle fills ~99.5% of its 24×24 canvas edge-to-edge. Equal
+      *boxes* at a small render size read as very unequal glyphs; 32px
+      line icons (~16.5px effective) + a 16px avatar (~15.9px
+      effective) match instead. If new nav-style icons are added later,
+      measure before assuming equal boxes = equal visual weight.
+  - **`/quiz`** (Figma: idle `13954:10374`, selected `13954:10484`,
+    correct review `13900:24733`, incorrect review `14030:17584`) — a
+    single mocked True/False question, the last question of the exam
+    plan's quiz (explicitly not a full quiz mockup). "True" is the
+    factually correct answer, so correctness here is real boolean
+    evaluation (`selected === "true"`), not a scripted per-attempt
+    outcome like the Voice Recall terms use — there's only one attempt,
+    nothing to script per-attempt. Option buttons are **rectangular,
+    24px corner radius** (Figma `24.879px` scaled) — not the pill/
+    rounded-full shape `SelectableButton` uses elsewhere, so they're
+    hand-rolled locally rather than reusing that component.
+    - X opens a local **`ExitConfirmSheet` `"pre-step"` variant**
+      (Figma `14033:4400`) instead of exiting directly — boolean overlay
+      state local to this screen (not the shared layout-level
+      `exitConfirmOpen` every VR screen's X uses, since "Leave" here
+      goes to `/path`, not `/streak`).
+    - "Skip to next question" and both review screens' "Continue"
+      route through `getEntryForkRoute()` (see `recall-flow-context.tsx`
+      below) — same first-time/returning determination the rest of the
+      app uses, so a session that already did a VR round this session
+      and comes back through the quiz correctly lands on the returning
+      fork, not always the first-time one.
 
 Shared infrastructure (all under `src/`):
+- `lib/recall-flow-context.tsx` also exports **`getEntryForkRoute(termOutcomes)`**
+  — the one place "which entry-fork variant should this session see" is
+  decided (`"/"` if `termOutcomes` is empty or every recorded outcome is
+  `"skipped"`, else `"/confidence-recurring"`). Extracted from what was
+  previously the identical `allSkipped ? "/" : "/confidence-recurring"`
+  expression duplicated in `recall-summary/page.tsx` and
+  `summary/page.tsx`'s own "Try again" handlers — `/quiz`'s "Skip to next
+  question" and review-continue needed the same determination a third
+  time, so it's centralized now instead of copy-pasted again. Plain
+  function, not a hook — pair with `useTermOutcomes()` at the call site.
 - `app/(recall)/layout.tsx` + `lib/recall-flow-context.tsx` — the
   persistent chrome. `TopBar` lives in the layout, not in each screen, so
   it survives route changes and animates step-to-step instead of
@@ -759,6 +844,25 @@ Shared infrastructure (all under `src/`):
   - `useRecallChromeBlur` resets to `false` on unmount — without that,
     navigating away while a screen's own dialog is open leaves the next
     screen's chrome permanently blurred.
+  - **Screen-to-screen transitions now genuinely slide** —
+    motion-guide.md's own "push transitions slide in from the right"
+    recipe existed as a written recipe but was never actually built at
+    the route level until this pass; every navigation was an instant
+    swap before. `{children}` is wrapped in
+    `AnimatePresence mode="popLayout"` + a `motion.div key={pathname}`,
+    sliding in from the right / out to the left with the `soft` preset.
+    **Term-to-term advancement is explicitly excluded** — a content
+    change within the same mic loop, not a screen transition, per
+    direct instruction — by tracking the previous pathname in a ref and
+    using a `{duration: 0}` transition (not by removing the
+    AnimatePresence wrapper for that case, which would risk a genuine
+    double-mount of two term screens' side-effecting hooks). Verified
+    for real, not assumed: sampled `getComputedStyle(el).transform`
+    across several frames during a live navigation and confirmed x
+    actually moves 24→0 (and the exiting screen 0→-24) for a real
+    transition, and stays frozen at `0,0` for a term-to-term one — see
+    the `getAnimations()` gotcha below for why that was the right tool
+    and not `getAnimations()`.
   - **`MascotBubble` now renders once in the layout too** (same pattern as
     `TopBar`), driven by a `mascot` context value a screen sets via
     `useMascotBubble({ pose, alt, text, dimmed })`; `null` means "don't
@@ -1003,6 +1107,12 @@ Shared infrastructure (all under `src/`):
   group. Props: `open`, `variant: "first-time" | "in-progress"`,
   `onKeepLearning`, `onLeave` — reuses `MascotImage`, `BottomCta`,
   `PrimaryButton`/`SecondaryButton` directly, no new button markup.
+  **A third variant, `"pre-step"`, was added later** (Figma
+  `14033:4400`, "standby" mascot pose — design.md's own "pre-step /
+  neutral prompts" mapping) for `/quiz`'s own X — used locally there
+  with its own boolean state, not through the layout's shared
+  `exitConfirmOpen`/`requestExit`, since "Leave" needs to go to `/path`
+  rather than the shared `/streak` every VR screen's exit shares.
 - `components/highlight-card.tsx` — the "Picture this:" / "What you
   wrote."/"What I heard." card. Border is `public/images/picture-this-box.svg`
   (real hand-drawn asset), applied via CSS `border-image` (9-slice, not a
@@ -1248,6 +1358,18 @@ From the spec's "Constraints — do NOT build" section:
   mascot-bubble pose-crossfade bug (avatar box needed its own `layout`,
   see above) and confirmed the eventual fix was real, not just a
   differently-broken end state that happened to screenshot the same.
+  - **Correction: `element.getAnimations()` can *also* silently miss a
+    genuinely-running Motion animation** — querying it on a batch of
+    `repeat: Infinity` spinner/pulse elements (the Sending spinner,
+    Checking pulse) returned an empty list for the bulk of their runtime
+    even though the animation was visibly, continuously running, and even
+    though a user had directly reported "these animations don't seem to
+    be happening." Re-verifying with `getComputedStyle(el).transform`
+    sampled every ~150ms across several seconds showed the rotation/scale
+    matrix genuinely changing the whole time — a false negative, not a
+    real bug. When the two methods disagree, trust the computed-style
+    sampling; don't conclude an animation is broken from `getAnimations()`
+    alone.
 - **When a feature needs to be verified but the deterministic/scripted
   content never naturally exercises that path** (e.g. term-3's Reveal
   screen when the shipped script is wrong→wrong→wrong and always reaches
